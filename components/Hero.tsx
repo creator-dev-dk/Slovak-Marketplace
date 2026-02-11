@@ -2,9 +2,11 @@ import React from 'react';
 import { Search, MapPin, ChevronDown } from 'lucide-react';
 import { REGIONS } from '../constants';
 import { useAppStore } from '../store/useStore';
+import { TRANSLATIONS } from '../translations';
 
 const Hero: React.FC = () => {
-  const { searchQuery, setSearchQuery } = useAppStore();
+  const { searchQuery, setSearchQuery, language } = useAppStore();
+  const t = TRANSLATIONS[language];
 
   return (
     <div className="relative bg-slovak-gray overflow-hidden">
@@ -15,16 +17,16 @@ const Hero: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 relative z-10">
         <div className="text-center max-w-3xl mx-auto mb-10">
           <span className="text-slovak-red font-bold tracking-widest uppercase text-xs mb-3 block">
-            Nový štandard predaja
+            {t.hero.tagline}
           </span>
           <h1 className="text-4xl md:text-6xl font-extrabold text-slovak-blue tracking-tight mb-6 leading-tight">
-            Nakupujte a predávajte <br/>
+            {t.hero.titleStart} <br/>
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-slovak-blue to-blue-600">
-              s istotou a štýlom.
+              {t.hero.titleEnd}
             </span>
           </h1>
           <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Prvý slovenský marketplace s verifikáciou cez BankID a Concierge službami pre prémiové tovary.
+            {t.hero.subtitle}
           </p>
         </div>
 
@@ -36,7 +38,7 @@ const Hero: React.FC = () => {
               type="text" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Čo hľadáte? (napr. Audi Q8, iPhone 15 Pro)" 
+              placeholder={t.hero.searchPlaceholder}
               className="bg-transparent w-full outline-none text-gray-800 placeholder-gray-400 font-medium"
             />
           </div>
@@ -44,7 +46,7 @@ const Hero: React.FC = () => {
           <div className="md:w-64 flex items-center bg-gray-50 rounded-xl px-4 py-3 relative group cursor-pointer border-l border-white md:border-none">
             <MapPin className="text-gray-400 mr-3" size={20} />
             <select className="bg-transparent w-full outline-none text-gray-800 appearance-none cursor-pointer font-medium">
-              <option value="">Celé Slovensko</option>
+              <option value="">{t.hero.locationAll}</option>
               {REGIONS.map(r => (
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
@@ -53,16 +55,16 @@ const Hero: React.FC = () => {
           </div>
 
           <button className="bg-slovak-blue hover:bg-blue-900 text-white font-semibold rounded-xl px-8 py-3 md:py-0 transition-all shadow-lg shadow-blue-900/20 active:scale-95">
-            Hľadať
+            {t.hero.searchBtn}
           </button>
         </div>
 
         <div className="mt-8 flex justify-center gap-6 text-sm text-gray-500 font-medium">
           <span className="flex items-center gap-1">
-             <div className="w-2 h-2 rounded-full bg-green-500"></div> 1450+ nových inzerátov dnes
+             <div className="w-2 h-2 rounded-full bg-green-500"></div> 1450+ {t.hero.stats.newListings}
           </span>
           <span className="hidden md:flex items-center gap-1">
-             <div className="w-2 h-2 rounded-full bg-slovak-blue"></div> Overení predajcovia
+             <div className="w-2 h-2 rounded-full bg-slovak-blue"></div> {t.hero.stats.verified}
           </span>
         </div>
       </div>

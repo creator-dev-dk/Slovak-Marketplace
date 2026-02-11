@@ -19,7 +19,7 @@ const ListingDetail: React.FC = () => {
       if (!isLoggedIn) {
           openAuthModal();
       } else {
-          navigate('/messages');
+          navigate('/chat');
       }
   }
 

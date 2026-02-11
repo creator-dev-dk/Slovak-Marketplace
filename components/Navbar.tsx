@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { Search, Plus, User, Menu, X, Globe, ChevronDown, LogOut, Heart, MessageSquare } from 'lucide-react';
+import { Search, Plus, User, Menu, X, Globe, ChevronDown, LogOut, Heart, MessageCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 import { AnimatePresence, motion } from 'framer-motion';
+import { TRANSLATIONS } from '../translations';
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [lang, setLang] = useState<'SK' | 'EN'>('SK');
   const navigate = useNavigate();
   
-  const { isLoggedIn, user, openAuthModal, logout, favorites, unreadMessagesCount } = useAppStore();
+  const { isLoggedIn, user, openAuthModal, logout, favorites, unreadMessagesCount, language, setLanguage } = useAppStore();
+  const t = TRANSLATIONS[language];
 
   const handleAddListing = () => {
     if (!isLoggedIn) {
@@ -17,6 +18,10 @@ const Navbar: React.FC = () => {
     } else {
       navigate('/create');
     }
+  };
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'SK' ? 'EN' : 'SK');
   };
 
   return (
@@ -48,7 +53,7 @@ const Navbar: React.FC = () => {
               <input
                 type="text"
                 className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-full leading-5 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-slovak-blue/20 focus:border-slovak-blue transition-all duration-300"
-                placeholder="Hľadať (napr. Sky Park, Rolex...)"
+                placeholder={t.nav.searchPlaceholder}
               />
             </div>
           </div>
@@ -58,11 +63,11 @@ const Navbar: React.FC = () => {
             
             {/* Language Switcher */}
             <button 
-              onClick={() => setLang(lang === 'SK' ? 'EN' : 'SK')}
+              onClick={toggleLanguage}
               className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-slovak-blue transition-colors"
             >
               <Globe size={16} />
-              <span>{lang}</span>
+              <span>{language}</span>
               <ChevronDown size={14} className="text-gray-400" />
             </button>
 
@@ -80,8 +85,8 @@ const Navbar: React.FC = () => {
                  </Link>
 
                  {/* Messages Icon */}
-                 <Link to="/messages" className="relative text-gray-400 hover:text-slovak-blue transition-colors group">
-                    <MessageSquare size={22} />
+                 <Link to="/chat" className="relative text-gray-400 hover:text-slovak-blue transition-colors group">
+                    <MessageCircle size={22} />
                     {unreadMessagesCount > 0 && (
                       <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white animate-pulse">
                         {unreadMessagesCount}
@@ -97,7 +102,7 @@ const Navbar: React.FC = () => {
                     </div>
                     <span className="text-sm font-medium text-gray-700 group-hover:text-slovak-blue transition-colors">{user.name}</span>
                  </Link>
-                 <button onClick={logout} className="text-gray-400 hover:text-red-500 transition-colors" title="Odhlásiť">
+                 <button onClick={logout} className="text-gray-400 hover:text-red-500 transition-colors" title={t.nav.logout}>
                     <LogOut size={18} />
                  </button>
               </div>
@@ -107,7 +112,7 @@ const Navbar: React.FC = () => {
                 className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-slovak-blue transition-colors"
               >
                 <User size={18} />
-                <span>Prihlásiť</span>
+                <span>{t.nav.login}</span>
               </button>
             )}
 
@@ -117,15 +122,15 @@ const Navbar: React.FC = () => {
               className="flex items-center gap-2 bg-slovak-blue text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:bg-slovak-dark transition-all shadow-lg shadow-slovak-blue/25 hover:shadow-slovak-blue/40 active:scale-95"
             >
               <Plus size={16} />
-              <span>Pridať inzerát</span>
+              <span>{t.nav.addListing}</span>
             </button>
           </div>
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center gap-4">
              {isLoggedIn && (
-               <Link to="/messages" className="relative text-gray-600">
-                  <MessageSquare size={24} />
+               <Link to="/chat" className="relative text-gray-600">
+                  <MessageCircle size={24} />
                    {unreadMessagesCount > 0 && (
                       <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
                     )}
@@ -156,33 +161,41 @@ const Navbar: React.FC = () => {
                 <input
                   type="text"
                   className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900"
-                  placeholder="Hľadať..."
+                  placeholder={t.nav.searchPlaceholder}
                 />
             </div>
             
             {!isLoggedIn && (
                <button onClick={() => { openAuthModal(); setIsMenuOpen(false); }} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
-                 Prihlásiť sa
+                 {t.nav.login}
                </button>
             )}
 
             {isLoggedIn && (
               <>
                 <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
-                  Môj profil
-                  {favorites.length > 0 && <span className="text-xs font-bold text-slovak-red">{favorites.length} obľúbených</span>}
+                  {t.nav.myProfile}
+                  {favorites.length > 0 && <span className="text-xs font-bold text-slovak-red">{favorites.length} {t.nav.favorites}</span>}
                 </Link>
-                <Link to="/messages" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
-                  Správy
+                <Link to="/chat" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
+                  {t.nav.messages}
                   {unreadMessagesCount > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{unreadMessagesCount}</span>}
                 </Link>
               </>
             )}
 
             <Link to="/about" className="block px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>
-              O projekte
+              {t.nav.about}
             </Link>
             
+            <button 
+              onClick={toggleLanguage}
+              className="flex items-center gap-2 px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg w-full text-left"
+            >
+              <Globe size={18} />
+              Switch to {language === 'SK' ? 'English' : 'Slovak'}
+            </button>
+
             <div className="border-t border-gray-100 my-2"></div>
             
             <button 
@@ -190,7 +203,7 @@ const Navbar: React.FC = () => {
               className="w-full flex items-center justify-center gap-2 bg-slovak-blue text-white px-5 py-3 rounded-xl font-semibold"
             >
               <Plus size={18} />
-              <span>Pridať inzerát</span>
+              <span>{t.nav.addListing}</span>
             </button>
           </div>
         </motion.div>

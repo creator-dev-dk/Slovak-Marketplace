@@ -2,9 +2,11 @@ import React from 'react';
 import { X, ShieldCheck, Lock } from 'lucide-react';
 import { useAppStore } from '../store/useStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TRANSLATIONS } from '../translations';
 
 const AuthModal: React.FC = () => {
-  const { isAuthModalOpen, closeAuthModal, login } = useAppStore();
+  const { isAuthModalOpen, closeAuthModal, login, language } = useAppStore();
+  const t = TRANSLATIONS[language];
 
   if (!isAuthModalOpen) return null;
 
@@ -31,7 +33,7 @@ const AuthModal: React.FC = () => {
           <div className="bg-slovak-light p-6 border-b border-gray-100 flex justify-between items-center">
             <h2 className="text-xl font-bold text-slovak-blue flex items-center gap-2">
               <ShieldCheck className="text-slovak-gold" />
-              Prihlásenie
+              {t.auth.title}
             </h2>
             <button onClick={closeAuthModal} className="text-gray-400 hover:text-gray-600 transition-colors">
               <X size={24} />
@@ -41,10 +43,10 @@ const AuthModal: React.FC = () => {
           {/* Body */}
           <div className="p-8">
             <div className="text-center mb-8">
-              <p className="text-gray-600 mb-2">Pre pokračovanie zvoľte svoju banku.</p>
+              <p className="text-gray-600 mb-2">{t.auth.subtitle}</p>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold border border-green-100">
                 <Lock size={12} />
-                Zabezpečené cez BankID
+                {t.auth.secured}
               </div>
             </div>
 
@@ -68,8 +70,7 @@ const AuthModal: React.FC = () => {
 
             <div className="mt-8 text-center">
               <p className="text-xs text-gray-400">
-                Prihlásením súhlasíte s <a href="#" className="underline hover:text-slovak-blue">podmienkami používania</a>.
-                Vaše údaje sú chránené podľa GDPR.
+                {t.auth.consent}
               </p>
             </div>
           </div>

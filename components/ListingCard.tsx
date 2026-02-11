@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Listing, VerificationLevel } from '../types';
 import { Heart, MapPin, ShieldCheck, BadgeCheck } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
+import { TRANSLATIONS } from '../translations';
 
 interface ListingCardProps {
   listing: Listing;
@@ -13,14 +14,15 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
   const [imgSrc, setImgSrc] = useState(listing.imageUrl);
   const [isError, setIsError] = useState(false);
   
-  const { favorites, toggleFavorite } = useAppStore();
+  const { favorites, toggleFavorite, language } = useAppStore();
+  const t = TRANSLATIONS[language];
   const isFavorite = favorites.includes(listing.id);
 
   // Fallback image in case the main one fails
   const fallbackImage = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800";
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // Stop navigation to details page
     e.stopPropagation();
     toggleFavorite(listing.id);
   };
@@ -56,15 +58,15 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
             whileTap={{ scale: 0.8 }}
             className={`absolute top-3 right-3 p-2 backdrop-blur-md rounded-full transition-all shadow-sm z-10 ${
               isFavorite 
-                ? 'bg-white text-slovak-gold' 
-                : 'bg-white/90 text-gray-400 hover:text-slovak-gold hover:bg-white'
+                ? 'bg-white text-slovak-red' 
+                : 'bg-white/90 text-gray-400 hover:text-slovak-red hover:bg-white'
             }`}
             onClick={handleFavoriteClick}
           >
             <Heart 
               size={18} 
-              fill={isFavorite ? "#C5A059" : "none"} 
-              className={isFavorite ? "stroke-slovak-gold" : ""}
+              fill={isFavorite ? "#EE3524" : "none"} 
+              className={isFavorite ? "stroke-slovak-red" : ""}
             />
           </motion.button>
 
@@ -72,7 +74,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
           <div className="absolute top-3 left-3 flex flex-col gap-2">
             {listing.isPremium && (
               <div className="bg-slovak-blue/90 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg border border-white/10">
-                Premium
+                {t.listingCard.premium}
               </div>
             )}
             {listing.verificationLevel === VerificationLevel.BANK_ID && (
@@ -99,7 +101,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 
           <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Cena</span>
+              <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t.listingCard.price}</span>
               <span className="font-bold text-xl text-slovak-blue">
                 {listing.price.toLocaleString('sk-SK')} {listing.currency}
               </span>

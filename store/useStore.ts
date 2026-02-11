@@ -1,9 +1,14 @@
 import { create } from 'zustand';
-import { Listing, VerificationLevel } from '../types';
+import { Listing } from '../types';
 import { MOCK_LISTINGS } from '../constants';
 import { persist } from 'zustand/middleware';
 
+type Language = 'SK' | 'EN';
+
 interface AppState {
+  // Config
+  language: Language;
+
   // Search & Data
   listings: Listing[];
   searchQuery: string;
@@ -21,6 +26,7 @@ interface AppState {
   isAuthModalOpen: boolean;
   
   // Actions
+  setLanguage: (lang: Language) => void;
   setSearchQuery: (query: string) => void;
   setCategory: (category: string | null) => void;
   addListing: (listing: Listing) => void;
@@ -36,15 +42,17 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
+      language: 'SK',
       listings: MOCK_LISTINGS,
       searchQuery: '',
       selectedCategory: null,
-      favorites: [],
-      unreadMessagesCount: 2, // Mock initial unread count
+      favorites: [], // Stores listing IDs
+      unreadMessagesCount: 2,
       isLoggedIn: false,
       user: null,
       isAuthModalOpen: false,
 
+      setLanguage: (lang) => set({ language: lang }),
       setSearchQuery: (query) => set({ searchQuery: query }),
       setCategory: (category) => set({ selectedCategory: category }),
       
@@ -52,6 +60,7 @@ export const useAppStore = create<AppState>()(
         listings: [listing, ...state.listings] 
       })),
       
+      // Logic: If id exists, remove it; otherwise, add it.
       toggleFavorite: (id) => set((state) => {
         const isFavorite = state.favorites.includes(id);
         return {
@@ -73,8 +82,13 @@ export const useAppStore = create<AppState>()(
       markMessagesRead: () => set({ unreadMessagesCount: 0 }),
     }),
     {
-      name: 'premiov-storage', // unique name
-      partialize: (state) => ({ favorites: state.favorites, isLoggedIn: state.isLoggedIn, user: state.user }), // Persist these fields
+      name: 'premiov-storage',
+      partialize: (state) => ({ 
+        favorites: state.favorites, 
+        isLoggedIn: state.isLoggedIn, 
+        user: state.user,
+        language: state.language
+      }), 
     }
   )
 );
