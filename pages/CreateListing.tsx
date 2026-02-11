@@ -33,7 +33,7 @@ const CreateListing: React.FC = () => {
     description: '',
     isPremium: false,
     city: '',
-    region: 'Bratislavský' // Default to first valid enum value
+    region: 'Bratislavský' // Default matches DB Enum
   });
 
   useEffect(() => {
@@ -68,7 +68,7 @@ const CreateListing: React.FC = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-       const selectedFiles = Array.from(e.target.files) as File[];
+       const selectedFiles = Array.from(e.target.files);
        if (files.length + selectedFiles.length > 3) {
            alert("Maximálne môžete nahrať 3 fotografie.");
            return;
@@ -112,6 +112,7 @@ const CreateListing: React.FC = () => {
           return;
       }
 
+      // Check price format validity
       const priceVal = parseFloat(formData.price.replace(',', '.'));
       if (isNaN(priceVal) || priceVal <= 0) {
           alert("Prosím zadajte platnú cenu.");

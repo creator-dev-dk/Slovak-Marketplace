@@ -23,7 +23,7 @@ interface AppState {
   listings: Listing[];
   categories: Category[]; 
   isLoading: boolean;
-  isAuthLoading: boolean; // Added loading state for auth
+  isAuthLoading: boolean; // Loading state for initial session check
   error: string | null;
   searchQuery: string;
   selectedCategory: string | null;
@@ -65,7 +65,7 @@ export const useAppStore = create<AppState>()(
       listings: [],
       categories: [],
       isLoading: false,
-      isAuthLoading: true, // Default to true to prevent FOUC
+      isAuthLoading: true, // Start true to wait for Supabase check
       error: null,
       searchQuery: '',
       selectedCategory: null,
@@ -130,13 +130,14 @@ export const useAppStore = create<AppState>()(
             title: item.title,
             price: item.price,
             currency: item.currency || '€',
-            location: `${item.city}, ${item.region}`,
+            location: `${item.city}, ${item.region}`, // Enum region is safe to display
             imageUrl: item.images && item.images.length > 0 ? item.images[0] : '',
             category: item.categories?.name || 'Iné',
             isPremium: item.is_premium,
             verificationLevel: item.users?.verification_level as VerificationLevel || VerificationLevel.NONE,
             sellerName: item.users?.full_name || 'Predajca',
             postedAt: new Date(item.created_at).toLocaleDateString('sk-SK'),
+            description: item.description,
           }));
 
           set({ listings: mappedListings, isLoading: false });
@@ -154,10 +155,12 @@ export const useAppStore = create<AppState>()(
         set({ isLoading: true, error: null });
 
         try {
-          // Validate price
-          const priceValue = parseFloat(listingData.price.replace(',', '.'));
+          // Robust price parsing (handle 10,50 and 10.50)
+          const priceString = listingData.price.replace(',', '.');
+          const priceValue = parseFloat(priceString);
+          
           if (isNaN(priceValue) || priceValue < 0) {
-             throw new Error("Invalid price format");
+             throw new Error("Neplatná cena.");
           }
 
           // 1. Upload Images
@@ -165,7 +168,8 @@ export const useAppStore = create<AppState>()(
           
           for (const file of files) {
               const fileExt = file.name.split('.').pop();
-              const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+              // Create unique filename
+              const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
               const filePath = `${user.id}/${fileName}`;
 
               const { error: uploadError } = await supabase.storage
@@ -188,7 +192,7 @@ export const useAppStore = create<AppState>()(
             price: priceValue,
             currency: 'EUR',
             city: listingData.city,
-            region: listingData.region, // Matches region_enum in SQL
+            region: listingData.region, // Matches Postgres enum
             category_id: listingData.categoryId, // UUID
             images: imageUrls,
             is_premium: listingData.isPremium,
@@ -201,7 +205,7 @@ export const useAppStore = create<AppState>()(
           await fetchListings();
         } catch (err: any) {
           console.error('Error creating listing:', err);
-          set({ error: err.message, isLoading: false });
+          set({ error: err.message || 'Chyba pri vytváraní inzerátu', isLoading: false });
           throw err;
         }
       },
@@ -261,6 +265,7 @@ export const useAppStore = create<AppState>()(
         if (error) return { error };
 
         if (data.user) {
+          // Create profile in 'users' table
           const { error: profileError } = await supabase
             .from('users')
             .insert({

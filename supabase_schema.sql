@@ -33,7 +33,7 @@ CREATE TABLE public.categories (
 CREATE TABLE public.listings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-  category_id UUID REFERENCES public.categories(id) SET NULL,
+  category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL,
   
   title TEXT NOT NULL,
   description TEXT,

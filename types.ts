@@ -29,6 +29,7 @@ export interface Listing {
   verificationLevel: VerificationLevel;
   sellerName: string;
   postedAt: string;
+  description?: string;
 }
 
 export interface User {

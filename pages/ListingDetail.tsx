@@ -3,14 +3,14 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { MapPin, ShieldCheck, Share2, Heart, ArrowLeft, CheckCircle2, BadgeCheck, MessageSquare, Phone } from 'lucide-react';
+import { MapPin, ShieldCheck, Share2, Heart, ArrowLeft, CheckCircle2, BadgeCheck, MessageSquare, Phone, Loader2 } from 'lucide-react';
 import { VerificationLevel } from '../types';
 import { motion } from 'framer-motion';
 
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { listings, toggleFavorite, favorites, isLoggedIn, openAuthModal } = useAppStore();
+  const { listings, toggleFavorite, favorites, isLoggedIn, openAuthModal, isLoading } = useAppStore();
   const listing = listings.find(l => l.id === id);
 
   const isFavorite = listing ? favorites.includes(listing.id) : false;
@@ -21,6 +21,15 @@ const ListingDetail: React.FC = () => {
       } else {
           navigate('/chat');
       }
+  }
+
+  // Show loader while waiting for listings fetch (e.g. on page refresh)
+  if (isLoading && !listing) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slovak-light">
+             <Loader2 className="animate-spin text-slovak-blue" size={40} />
+        </div>
+      );
   }
 
   if (!listing) {
@@ -85,19 +94,20 @@ const ListingDetail: React.FC = () => {
               {/* Description */}
               <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Popis</h2>
-                <div className="prose prose-blue max-w-none text-gray-600 leading-relaxed">
-                  <p>
-                    Ponúkame na predaj exkluzívny {listing.title}. Tento produkt spĺňa najvyššie štandardy kvality.
-                    Nachádza sa v lokalite {listing.location} a je k dispozícii ihneď k odberu.
-                  </p>
-                  <p className="mt-4">
-                    Stav: <strong>Ako nové</strong><br/>
-                    Pôvod: <strong>Slovenská distribúcia</strong><br/>
-                    Záruka: <strong>24 mesiacov</strong>
-                  </p>
-                  <p className="mt-4 text-sm text-gray-400 italic">
-                    Tento popis je automaticky generovaný pre účely prototypu.
-                  </p>
+                <div className="prose prose-blue max-w-none text-gray-600 leading-relaxed whitespace-pre-wrap">
+                  {listing.description || (
+                      <>
+                        <p>
+                            Ponúkame na predaj exkluzívny {listing.title}. Tento produkt spĺňa najvyššie štandardy kvality.
+                            Nachádza sa v lokalite {listing.location} a je k dispozícii ihneď k odberu.
+                        </p>
+                        <p className="mt-4">
+                            Stav: <strong>Ako nové</strong><br/>
+                            Pôvod: <strong>Slovenská distribúcia</strong><br/>
+                            Záruka: <strong>24 mesiacov</strong>
+                        </p>
+                      </>
+                  )}
                 </div>
               </div>
             </div>
