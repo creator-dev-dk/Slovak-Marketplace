@@ -21,6 +21,7 @@ interface AppState {
 
   // Search & Data
   listings: Listing[];
+  currentListing: Listing | null; // Added for single listing view
   categories: Category[]; 
   isLoading: boolean;
   isAuthLoading: boolean;
@@ -47,6 +48,7 @@ interface AppState {
   setRegion: (region: string | null) => void;
   
   fetchListings: () => Promise<void>;
+  fetchListingById: (id: string) => Promise<void>; // New Action
   fetchCategories: () => Promise<void>;
   addListing: (listingData: CreateListingPayload, files: File[]) => Promise<void>;
   
@@ -67,6 +69,7 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       language: 'SK',
       listings: [],
+      currentListing: null,
       categories: [],
       isLoading: false,
       isAuthLoading: true,
@@ -117,8 +120,6 @@ export const useAppStore = create<AppState>()(
         const { searchQuery, selectedCategory, selectedRegion } = get();
 
         try {
-          // Dynamic Query Construction
-          // We join users and categories to get related data efficiently
           let query = supabase
             .from('listings')
             .select(`
@@ -135,22 +136,18 @@ export const useAppStore = create<AppState>()(
             `)
             .eq('is_active', true);
 
-          // Apply Search Filter (Server-side ILIKE)
           if (searchQuery && searchQuery.trim() !== '') {
             query = query.ilike('title', `%${searchQuery}%`);
           }
 
-          // Apply Category Filter
           if (selectedCategory) {
             query = query.eq('category_id', selectedCategory);
           }
 
-          // Apply Region Filter
           if (selectedRegion && selectedRegion !== '') {
             query = query.eq('region', selectedRegion);
           }
 
-          // Order results
           query = query.order('created_at', { ascending: false });
 
           const { data, error } = await query;
@@ -159,7 +156,7 @@ export const useAppStore = create<AppState>()(
 
           const mappedListings: Listing[] = (data || []).map((item: any) => ({
             id: item.id,
-            userId: item.user_id, // Map Supabase user_id to local userId for secure filtering
+            userId: item.user_id,
             title: item.title,
             price: item.price,
             currency: item.currency || '€',
@@ -180,6 +177,53 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      // --- FETCH SINGLE LISTING ---
+      fetchListingById: async (id: string) => {
+        set({ isLoading: true, error: null, currentListing: null });
+        try {
+           const { data, error } = await supabase
+            .from('listings')
+            .select(`
+              *,
+              users (
+                full_name,
+                avatar_url,
+                verification_level
+              ),
+              categories (
+                 name,
+                 icon_name
+              )
+            `)
+            .eq('id', id)
+            .single();
+
+           if (error) throw error;
+           if (!data) throw new Error('Listing not found');
+
+           const mappedListing: Listing = {
+             id: data.id,
+             userId: data.user_id,
+             title: data.title,
+             price: data.price,
+             currency: data.currency || '€',
+             location: `${data.city}, ${data.region}`,
+             imageUrl: data.images && data.images.length > 0 ? data.images[0] : '',
+             category: data.categories?.name || 'Iné',
+             isPremium: data.is_premium,
+             verificationLevel: data.users?.verification_level as VerificationLevel || VerificationLevel.NONE,
+             sellerName: data.users?.full_name || 'Predajca',
+             postedAt: new Date(data.created_at).toLocaleDateString('sk-SK'),
+             description: data.description,
+           };
+
+           set({ currentListing: mappedListing, isLoading: false });
+        } catch (err: any) {
+           console.error('Error fetching listing:', err);
+           set({ error: err.message, isLoading: false });
+        }
+      },
+
       // --- ADD LISTING ---
       addListing: async (listingData, files) => {
         const { user, fetchListings } = get();
@@ -197,7 +241,6 @@ export const useAppStore = create<AppState>()(
 
           const imageUrls: string[] = [];
           
-          // Parallel upload could be implemented here for speed, doing sequential for simplicity/safety
           for (const file of files) {
               const fileExt = file.name.split('.').pop();
               const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
@@ -231,7 +274,6 @@ export const useAppStore = create<AppState>()(
 
           if (insertError) throw insertError;
 
-          // Refresh listings to show the new one immediately
           await fetchListings();
         } catch (err: any) {
           console.error('Error creating listing:', err);

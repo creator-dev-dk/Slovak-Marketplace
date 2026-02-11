@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 import Navbar from '../components/Navbar';
@@ -10,10 +10,45 @@ import { motion } from 'framer-motion';
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { listings, toggleFavorite, favorites, isLoggedIn, openAuthModal, isLoading } = useAppStore();
-  const listing = listings.find(l => l.id === id);
+  const { currentListing, fetchListingById, toggleFavorite, favorites, isLoggedIn, openAuthModal, isLoading } = useAppStore();
 
-  const isFavorite = listing ? favorites.includes(listing.id) : false;
+  useEffect(() => {
+    if (id) {
+        fetchListingById(id);
+    }
+  }, [id, fetchListingById]);
+
+  // Loading state
+  if (isLoading) {
+      return (
+        <div className="min-h-screen flex flex-col bg-slovak-light">
+           <Navbar />
+           <div className="flex-grow flex items-center justify-center">
+               <Loader2 className="animate-spin text-slovak-blue" size={40} />
+           </div>
+           <Footer />
+        </div>
+      );
+  }
+
+  // Not Found State
+  if (!currentListing) {
+    return (
+      <div className="min-h-screen flex flex-col bg-slovak-light">
+        <Navbar />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-slovak-blue mb-4">Inzerát sa nenašiel</h2>
+            <Link to="/" className="text-slovak-gold hover:underline">Späť na domovskú stránku</Link>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const listing = currentListing;
+  const isFavorite = favorites.includes(listing.id);
 
   const handleContact = () => {
       if (!isLoggedIn) {
@@ -21,26 +56,6 @@ const ListingDetail: React.FC = () => {
       } else {
           navigate('/chat');
       }
-  }
-
-  // Show loader while waiting for listings fetch (e.g. on page refresh)
-  if (isLoading && !listing) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-slovak-light">
-             <Loader2 className="animate-spin text-slovak-blue" size={40} />
-        </div>
-      );
-  }
-
-  if (!listing) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slovak-light">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-slovak-blue mb-4">Inzerát sa nenašiel</h2>
-          <Link to="/" className="text-slovak-gold hover:underline">Späť na domovskú stránku</Link>
-        </div>
-      </div>
-    );
   }
 
   return (
