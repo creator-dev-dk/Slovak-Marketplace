@@ -32,6 +32,7 @@ interface AppState {
   conversations: Conversation[];
   activeConversationId: string | null;
   messages: Message[];
+  isChatLoading: boolean;
   
   // Filters
   searchQuery: string;
@@ -97,6 +98,7 @@ export const useAppStore = create<AppState>()(
       conversations: [],
       activeConversationId: null,
       messages: [],
+      isChatLoading: false,
       
       // Filter State
       searchQuery: '',
@@ -283,6 +285,7 @@ export const useAppStore = create<AppState>()(
 
             const mappedConversations: Conversation[] = (data || []).map((c: any) => {
                 const isBuyer = c.buyer_id === user.id;
+                // Handle cases where users/listings might be deleted
                 const otherUserData = isBuyer ? c.seller : c.buyer;
                 
                 return {
@@ -293,13 +296,13 @@ export const useAppStore = create<AppState>()(
                     created_at: c.created_at,
                     updated_at: c.updated_at,
                     listing: {
-                        title: c.listings?.title || 'Neznámy inzerát',
+                        title: c.listings?.title || 'Odstránený inzerát',
                         images: c.listings?.images || [],
                         price: c.listings?.price || 0
                     },
                     otherUser: {
-                        id: otherUserData?.id,
-                        full_name: otherUserData?.full_name || 'User',
+                        id: otherUserData?.id || 'deleted',
+                        full_name: otherUserData?.full_name || 'Odstránený používateľ',
                         avatar_url: otherUserData?.avatar_url,
                         verification_level: otherUserData?.verification_level || VerificationLevel.NONE
                     },
@@ -353,15 +356,12 @@ export const useAppStore = create<AppState>()(
       },
 
       setActiveConversation: (id) => {
-          set({ activeConversationId: id });
-          if (id) {
-            get().fetchMessages(id);
-          } else {
-             get().unsubscribeFromMessages();
-          }
+          // Clear messages immediately to avoid showing old chat content
+          set({ activeConversationId: id, messages: [] });
       },
 
       fetchMessages: async (conversationId: string) => {
+          set({ isChatLoading: true });
           try {
               const { data, error } = await supabase
                 .from('messages')
@@ -374,6 +374,8 @@ export const useAppStore = create<AppState>()(
               get().subscribeToMessages();
           } catch (err) {
               console.error('Error fetching messages:', err);
+          } finally {
+              set({ isChatLoading: false });
           }
       },
 
@@ -453,6 +455,7 @@ export const useAppStore = create<AppState>()(
 
       // --- AUTHENTICATION ---
       checkSession: async () => {
+        set({ isAuthLoading: true });
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
@@ -467,7 +470,8 @@ export const useAppStore = create<AppState>()(
                 user: { 
                   id: session.user.id, 
                   email: session.user.email,
-                  name: profile?.full_name || session.user.email?.split('@')[0] || 'User', 
+                  // Use metadata or email prefix if profile doesn't exist yet
+                  name: profile?.full_name || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User', 
                   type: 'buyer', 
                   avatar: profile?.avatar_url || 'U' 
                 } 
@@ -493,10 +497,17 @@ export const useAppStore = create<AppState>()(
       },
 
       register: async (email, password, fullName) => {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ 
+            email, 
+            password,
+            options: {
+                data: { full_name: fullName }
+            }
+        });
         if (error) return { error };
 
         if (data.user) {
+          // Attempt to create profile, but don't block if it fails (can happen via triggers)
           const { error: profileError } = await supabase
             .from('users')
             .insert({
@@ -505,7 +516,11 @@ export const useAppStore = create<AppState>()(
               full_name: fullName,
               avatar_url: fullName.charAt(0).toUpperCase()
             });
-          if (profileError) console.error("Profile creation failed", profileError);
+          
+          if (profileError && profileError.code !== '23505') { // Ignore duplicate key error
+              console.error("Profile creation failed", profileError);
+          }
+          
           await get().checkSession();
           set({ isAuthModalOpen: false });
         }
@@ -526,7 +541,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({ 
         favorites: state.favorites, 
         language: state.language,
-        activeConversationId: state.activeConversationId // Persist active chat to survive refresh
+        activeConversationId: state.activeConversationId
       }), 
     }
   )

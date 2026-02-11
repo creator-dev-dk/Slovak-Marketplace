@@ -125,3 +125,20 @@ BEGIN;
   DROP PUBLICATION IF EXISTS supabase_realtime;
   CREATE PUBLICATION supabase_realtime FOR TABLE messages;
 COMMIT;
+
+-- 4. STORAGE SETUP (CRITICAL FOR IMAGES)
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('images', 'images', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Public Access" 
+ON storage.objects FOR SELECT 
+USING ( bucket_id = 'images' );
+
+CREATE POLICY "Auth Upload" 
+ON storage.objects FOR INSERT 
+WITH CHECK ( 
+  bucket_id = 'images' 
+  AND auth.role() = 'authenticated' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);

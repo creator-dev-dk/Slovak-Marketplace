@@ -19,7 +19,7 @@ export enum VerificationLevel {
 
 export interface Listing {
   id: string;
-  userId: string; // Added for secure filtering
+  userId: string;
   title: string;
   price: number;
   currency: string;
@@ -58,7 +58,7 @@ export interface Conversation {
   created_at: string;
   updated_at: string;
   
-  // Joined Data (Frontend convenience)
+  // Joined Data
   listing?: {
     title: string;
     images: string[];

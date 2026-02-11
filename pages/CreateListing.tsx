@@ -40,6 +40,13 @@ const CreateListing: React.FC = () => {
     fetchCategories();
   }, [fetchCategories]);
 
+  // Clean up object URLs to avoid memory leaks
+  useEffect(() => {
+      return () => {
+          previewUrls.forEach(url => URL.revokeObjectURL(url));
+      };
+  }, [previewUrls]);
+
   // Loading state for auth to prevent FOUC (Flash of Unauthenticated Content)
   if (isAuthLoading) {
       return (
@@ -89,7 +96,7 @@ const CreateListing: React.FC = () => {
       setFiles(newFiles);
 
       const newPreviews = [...previewUrls];
-      URL.revokeObjectURL(newPreviews[index]); // Cleanup
+      URL.revokeObjectURL(newPreviews[index]); // Cleanup specific URL
       newPreviews.splice(index, 1);
       setPreviewUrls(newPreviews);
   };

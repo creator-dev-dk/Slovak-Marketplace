@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import { useAppStore } from '../store/useStore';
-import { Search, Send, MoreVertical, Paperclip, CheckCheck, Phone, Video, ShieldCheck, MessageCircle, Loader2 } from 'lucide-react';
+import { Search, Send, MoreVertical, Paperclip, CheckCheck, Phone, ShieldCheck, MessageCircle, Loader2 } from 'lucide-react';
 
 const Chat: React.FC = () => {
   const { 
@@ -13,30 +13,28 @@ const Chat: React.FC = () => {
       sendMessage, 
       fetchConversations, 
       fetchMessages,
-      unsubscribeFromMessages 
+      unsubscribeFromMessages,
+      isChatLoading
   } = useAppStore();
 
   const [inputMessage, setInputMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Ref to track if we've attempted to re-subscribe on mount
-  const hasSubscribedRef = useRef(false);
-
-  // Fetch conversations and restore subscription on mount
+  // Subscription and Fetch Logic
   useEffect(() => {
+      // 1. Fetch the list of conversations (sidebar)
       fetchConversations();
       
-      // If we have a persisted active conversation ID, we need to fetch messages
-      // and re-establish the realtime subscription because sockets don't persist.
-      if (activeConversationId && !hasSubscribedRef.current) {
+      // 2. If a conversation is selected, fetch its messages and subscribe to updates
+      if (activeConversationId) {
           fetchMessages(activeConversationId);
-          hasSubscribedRef.current = true;
       }
       
+      // 3. Cleanup: Unsubscribe when component unmounts or ID changes
       return () => {
           unsubscribeFromMessages();
       };
-  }, [fetchConversations, fetchMessages, unsubscribeFromMessages, activeConversationId]);
+  }, [activeConversationId]); // Re-run when ID changes (User clicks a different chat)
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -45,13 +43,13 @@ const Chat: React.FC = () => {
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
-    await sendMessage(inputMessage);
-    setInputMessage('');
+    const msgToSend = inputMessage;
+    setInputMessage(''); // Optimistically clear input
+    await sendMessage(msgToSend);
   };
 
   const activeConversation = conversations.find(c => c.id === activeConversationId);
 
-  // Helper to format date nicely
   const formatTime = (dateString: string) => {
       const date = new Date(dateString);
       const now = new Date();
@@ -146,7 +144,7 @@ const Chat: React.FC = () => {
                    <div className="flex items-center gap-3">
                        {/* Back button for mobile */}
                        <button onClick={() => setActiveConversation(null)} className="md:hidden p-2 -ml-2 text-gray-500">
-                           <Search className="transform rotate-180" size={20} /> {/* Using Search icon as Back icon temporarily or ArrowLeft if available */}
+                           <Search className="transform rotate-180" size={20} />
                        </button>
 
                       <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold overflow-hidden">
@@ -184,29 +182,34 @@ const Chat: React.FC = () => {
 
                 {/* Messages Feed */}
                 <div className="flex-grow p-4 overflow-y-auto space-y-4 bg-gray-50/30">
-                   {messages.length === 0 && (
+                   {isChatLoading ? (
+                       <div className="flex h-full items-center justify-center">
+                           <Loader2 className="animate-spin text-slovak-blue" size={32} />
+                       </div>
+                   ) : messages.length === 0 ? (
                        <div className="text-center text-gray-400 mt-10">
                            Toto je začiatok vašej konverzácie.
                        </div>
-                   )}
-                   {messages.map((msg) => {
-                      const isMe = msg.sender_id === user.id;
-                      return (
-                        <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[70%] rounded-2xl p-4 shadow-sm ${
-                                isMe 
-                                    ? 'bg-slovak-blue text-white rounded-br-none' 
-                                    : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
-                            }`}>
-                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                                <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${isMe ? 'text-blue-200' : 'text-gray-400'}`}>
-                                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    {isMe && <CheckCheck size={14} />}
+                   ) : (
+                       messages.map((msg) => {
+                          const isMe = msg.sender_id === user.id;
+                          return (
+                            <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[70%] rounded-2xl p-4 shadow-sm ${
+                                    isMe 
+                                        ? 'bg-slovak-blue text-white rounded-br-none' 
+                                        : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
+                                }`}>
+                                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                    <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${isMe ? 'text-blue-200' : 'text-gray-400'}`}>
+                                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {isMe && <CheckCheck size={14} />}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                      );
-                   })}
+                          );
+                       })
+                   )}
                    <div ref={messagesEndRef} />
                 </div>
 
