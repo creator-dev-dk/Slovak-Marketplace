@@ -23,10 +23,13 @@ interface AppState {
   listings: Listing[];
   categories: Category[]; 
   isLoading: boolean;
-  isAuthLoading: boolean; // Loading state for initial session check
+  isAuthLoading: boolean;
   error: string | null;
+  
+  // Filters
   searchQuery: string;
   selectedCategory: string | null;
+  selectedRegion: string | null;
   
   // User Actions
   favorites: string[];
@@ -41,6 +44,7 @@ interface AppState {
   setLanguage: (lang: Language) => void;
   setSearchQuery: (query: string) => void;
   setCategory: (category: string | null) => void;
+  setRegion: (region: string | null) => void;
   
   fetchListings: () => Promise<void>;
   fetchCategories: () => Promise<void>;
@@ -65,10 +69,14 @@ export const useAppStore = create<AppState>()(
       listings: [],
       categories: [],
       isLoading: false,
-      isAuthLoading: true, // Start true to wait for Supabase check
+      isAuthLoading: true,
       error: null,
+      
+      // Filter State
       searchQuery: '',
       selectedCategory: null,
+      selectedRegion: null,
+      
       favorites: [],
       unreadMessagesCount: 0,
       isLoggedIn: false,
@@ -78,6 +86,7 @@ export const useAppStore = create<AppState>()(
       setLanguage: (lang) => set({ language: lang }),
       setSearchQuery: (query) => set({ searchQuery: query }),
       setCategory: (category) => set({ selectedCategory: category }),
+      setRegion: (region) => set({ selectedRegion: region }),
 
       // --- FETCH CATEGORIES ---
       fetchCategories: async () => {
@@ -102,11 +111,15 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // --- FETCH LISTINGS ---
+      // --- FETCH LISTINGS (Server-Side Filtering) ---
       fetchListings: async () => {
         set({ isLoading: true, error: null });
+        const { searchQuery, selectedCategory, selectedRegion } = get();
+
         try {
-          const { data, error } = await supabase
+          // Dynamic Query Construction
+          // We join users and categories to get related data efficiently
+          let query = supabase
             .from('listings')
             .select(`
               *,
@@ -120,17 +133,37 @@ export const useAppStore = create<AppState>()(
                  icon_name
               )
             `)
-            .eq('is_active', true)
-            .order('created_at', { ascending: false });
+            .eq('is_active', true);
+
+          // Apply Search Filter (Server-side ILIKE)
+          if (searchQuery && searchQuery.trim() !== '') {
+            query = query.ilike('title', `%${searchQuery}%`);
+          }
+
+          // Apply Category Filter
+          if (selectedCategory) {
+            query = query.eq('category_id', selectedCategory);
+          }
+
+          // Apply Region Filter
+          if (selectedRegion && selectedRegion !== '') {
+            query = query.eq('region', selectedRegion);
+          }
+
+          // Order results
+          query = query.order('created_at', { ascending: false });
+
+          const { data, error } = await query;
 
           if (error) throw error;
 
           const mappedListings: Listing[] = (data || []).map((item: any) => ({
             id: item.id,
+            userId: item.user_id, // Map Supabase user_id to local userId for secure filtering
             title: item.title,
             price: item.price,
             currency: item.currency || '€',
-            location: `${item.city}, ${item.region}`, // Enum region is safe to display
+            location: `${item.city}, ${item.region}`,
             imageUrl: item.images && item.images.length > 0 ? item.images[0] : '',
             category: item.categories?.name || 'Iné',
             isPremium: item.is_premium,
@@ -147,7 +180,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // --- ADD LISTING + UPLOAD ---
+      // --- ADD LISTING ---
       addListing: async (listingData, files) => {
         const { user, fetchListings } = get();
         if (!user) return;
@@ -155,7 +188,6 @@ export const useAppStore = create<AppState>()(
         set({ isLoading: true, error: null });
 
         try {
-          // Robust price parsing (handle 10,50 and 10.50)
           const priceString = listingData.price.replace(',', '.');
           const priceValue = parseFloat(priceString);
           
@@ -163,12 +195,11 @@ export const useAppStore = create<AppState>()(
              throw new Error("Neplatná cena.");
           }
 
-          // 1. Upload Images
           const imageUrls: string[] = [];
           
+          // Parallel upload could be implemented here for speed, doing sequential for simplicity/safety
           for (const file of files) {
               const fileExt = file.name.split('.').pop();
-              // Create unique filename
               const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
               const filePath = `${user.id}/${fileName}`;
 
@@ -185,15 +216,14 @@ export const useAppStore = create<AppState>()(
               imageUrls.push(publicUrlData.publicUrl);
           }
 
-          // 2. Insert Listing
           const { error: insertError } = await supabase.from('listings').insert({
             user_id: user.id,
             title: listingData.title,
             price: priceValue,
             currency: 'EUR',
             city: listingData.city,
-            region: listingData.region, // Matches Postgres enum
-            category_id: listingData.categoryId, // UUID
+            region: listingData.region,
+            category_id: listingData.categoryId,
             images: imageUrls,
             is_premium: listingData.isPremium,
             description: listingData.description
@@ -201,7 +231,7 @@ export const useAppStore = create<AppState>()(
 
           if (insertError) throw insertError;
 
-          // 3. Refresh Listings
+          // Refresh listings to show the new one immediately
           await fetchListings();
         } catch (err: any) {
           console.error('Error creating listing:', err);
@@ -265,7 +295,6 @@ export const useAppStore = create<AppState>()(
         if (error) return { error };
 
         if (data.user) {
-          // Create profile in 'users' table
           const { error: profileError } = await supabase
             .from('users')
             .insert({

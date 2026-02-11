@@ -25,6 +25,7 @@ export const CATEGORIES: (Category & { iconComponent: React.ReactNode })[] = [
 export const MOCK_LISTINGS: Listing[] = [
   {
     id: '1',
+    userId: 'user_001',
     title: '3-izbový byt, Sky Park Tower 2',
     price: 450000,
     currency: '€',
@@ -39,6 +40,7 @@ export const MOCK_LISTINGS: Listing[] = [
   },
   {
     id: '2',
+    userId: 'user_002',
     title: 'Mercedes-Benz S-Class Long',
     price: 98900,
     currency: '€',
@@ -53,6 +55,7 @@ export const MOCK_LISTINGS: Listing[] = [
   },
   {
     id: '3',
+    userId: 'user_003',
     title: 'Apple iPhone 15 Pro Max Titanium',
     price: 1150,
     currency: '€',
@@ -67,6 +70,7 @@ export const MOCK_LISTINGS: Listing[] = [
   },
   {
     id: '4',
+    userId: 'user_004',
     title: 'Rolex Submariner Date',
     price: 14500,
     currency: '€',

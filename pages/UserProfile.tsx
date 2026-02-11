@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAppStore } from '../store/useStore';
-import { BadgeCheck, LayoutGrid, Heart, Settings, ShieldCheck, Mail, Bell, Smartphone, LogOut } from 'lucide-react';
+import { BadgeCheck, LayoutGrid, Heart, Settings, ShieldCheck, Bell, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ListingCard from '../components/ListingCard';
 import { useNavigate } from 'react-router-dom';
@@ -10,11 +10,11 @@ import { useNavigate } from 'react-router-dom';
 type Tab = 'listings' | 'favorites' | 'settings';
 
 const UserProfile: React.FC = () => {
-  const { user, listings, logout } = useAppStore();
+  const { user, listings, logout, favorites } = useAppStore();
   const [activeTab, setActiveTab] = useState<Tab>('listings');
   const navigate = useNavigate();
 
-  // If not logged in (handled simply for prototype)
+  // If not logged in
   if (!user) {
     return (
         <div className="min-h-screen bg-slovak-light flex flex-col">
@@ -30,10 +30,11 @@ const UserProfile: React.FC = () => {
     );
   }
 
-  // Filter Data
-  const myListings = listings.filter(l => l.sellerName === user.name);
-  // Mock favorites - just take the first 2 listings that aren't mine
-  const favoriteListings = listings.filter(l => l.sellerName !== user.name).slice(0, 2);
+  // SECURE FILTERING: Use userId comparison, not sellerName
+  const myListings = listings.filter(l => l.userId === user.id);
+  
+  // Filter favorites
+  const favoriteListings = listings.filter(l => favorites.includes(l.id));
 
   return (
     <div className="min-h-screen flex flex-col bg-slovak-light font-sans">
@@ -154,9 +155,15 @@ const UserProfile: React.FC = () => {
 
                     {activeTab === 'favorites' && (
                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {favoriteListings.map(listing => (
-                                <ListingCard key={listing.id} listing={listing} />
-                            ))}
+                            {favoriteListings.length > 0 ? (
+                                favoriteListings.map(listing => (
+                                    <ListingCard key={listing.id} listing={listing} />
+                                ))
+                            ) : (
+                                <div className="col-span-full text-center py-20 text-gray-400">
+                                    Zatiaľ nemáte žiadne obľúbené inzeráty.
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -178,38 +185,7 @@ const UserProfile: React.FC = () => {
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                                     </label>
                                 </div>
-
-                                <div className="flex items-center justify-between py-4 border-b border-gray-50">
-                                    <div>
-                                        <p className="font-bold text-gray-800">SMS notifikácie</p>
-                                        <p className="text-sm text-gray-400">Bezpečnostné kódy a stav objednávok</p>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" className="sr-only peer" />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                                    </label>
-                                </div>
-
-                                 <div className="flex items-center justify-between py-4">
-                                    <div>
-                                        <p className="font-bold text-gray-800">Newsletter</p>
-                                        <p className="text-sm text-gray-400">Tipy a novinky zo sveta Premium</p>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" className="sr-only peer" defaultChecked />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                                    </label>
-                                </div>
                             </div>
-
-                            <h3 className="text-lg font-bold text-gray-900 mt-8 mb-6 flex items-center gap-2">
-                                <ShieldCheck size={20} className="text-slovak-blue" />
-                                Zabezpečenie
-                            </h3>
-                            <button className="text-slovak-blue font-semibold text-sm hover:underline">Zmeniť heslo</button>
-                            <br/>
-                            <button className="text-slovak-blue font-semibold text-sm hover:underline mt-4">História prihlásení</button>
-
                         </div>
                     )}
                 </motion.div>

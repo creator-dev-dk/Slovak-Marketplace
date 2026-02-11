@@ -19,6 +19,7 @@ export enum VerificationLevel {
 
 export interface Listing {
   id: string;
+  userId: string; // Added for secure filtering
   title: string;
   price: number;
   currency: string;

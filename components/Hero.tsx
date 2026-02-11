@@ -4,8 +4,20 @@ import { REGIONS } from '../constants';
 import { useAppStore } from '../store/useStore';
 import { TRANSLATIONS } from '../translations';
 
+// Exact matches for Postgres enum 'region_enum'
+const REGION_OPTIONS = [
+  'Bratislavský', 
+  'Trnavský', 
+  'Trenčiansky', 
+  'Nitriansky', 
+  'Žilinský', 
+  'Banskobystrický', 
+  'Prešovský', 
+  'Košický'
+];
+
 const Hero: React.FC = () => {
-  const { searchQuery, setSearchQuery, language } = useAppStore();
+  const { searchQuery, setSearchQuery, selectedRegion, setRegion, language, fetchListings } = useAppStore();
   const t = TRANSLATIONS[language];
 
   return (
@@ -45,16 +57,23 @@ const Hero: React.FC = () => {
           
           <div className="md:w-64 flex items-center bg-gray-50 rounded-xl px-4 py-3 relative group cursor-pointer border-l border-white md:border-none">
             <MapPin className="text-gray-400 mr-3" size={20} />
-            <select className="bg-transparent w-full outline-none text-gray-800 appearance-none cursor-pointer font-medium">
+            <select 
+              value={selectedRegion || ''}
+              onChange={(e) => setRegion(e.target.value || null)}
+              className="bg-transparent w-full outline-none text-gray-800 appearance-none cursor-pointer font-medium"
+            >
               <option value="">{t.hero.locationAll}</option>
-              {REGIONS.map(r => (
-                <option key={r.id} value={r.id}>{r.name}</option>
+              {REGION_OPTIONS.map(r => (
+                <option key={r} value={r}>{r}</option>
               ))}
             </select>
             <ChevronDown className="absolute right-4 text-gray-400 pointer-events-none" size={16} />
           </div>
 
-          <button className="bg-slovak-blue hover:bg-blue-900 text-white font-semibold rounded-xl px-8 py-3 md:py-0 transition-all shadow-lg shadow-blue-900/20 active:scale-95">
+          <button 
+            onClick={() => fetchListings()}
+            className="bg-slovak-blue hover:bg-blue-900 text-white font-semibold rounded-xl px-8 py-3 md:py-0 transition-all shadow-lg shadow-blue-900/20 active:scale-95"
+          >
             {t.hero.searchBtn}
           </button>
         </div>
