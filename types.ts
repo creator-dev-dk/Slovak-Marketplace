@@ -38,3 +38,37 @@ export interface User {
   name: string;
   isVerified: boolean;
 }
+
+// --- CHAT TYPES ---
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  is_read: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  listing_id: string;
+  buyer_id: string;
+  seller_id: string;
+  created_at: string;
+  updated_at: string;
+  
+  // Joined Data (Frontend convenience)
+  listing?: {
+    title: string;
+    images: string[];
+    price: number;
+  };
+  otherUser?: {
+    id: string;
+    full_name: string;
+    avatar_url: string;
+    verification_level: VerificationLevel;
+  };
+  lastMessage?: string;
+}

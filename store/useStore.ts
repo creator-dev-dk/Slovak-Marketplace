@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { Listing, VerificationLevel, Category } from '../types';
+import { Listing, VerificationLevel, Category, Conversation, Message } from '../types';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 type Language = 'SK' | 'EN';
 
@@ -21,11 +22,16 @@ interface AppState {
 
   // Search & Data
   listings: Listing[];
-  currentListing: Listing | null; // Added for single listing view
+  currentListing: Listing | null;
   categories: Category[]; 
   isLoading: boolean;
   isAuthLoading: boolean;
   error: string | null;
+  
+  // Chat Data
+  conversations: Conversation[];
+  activeConversationId: string | null;
+  messages: Message[];
   
   // Filters
   searchQuery: string;
@@ -48,10 +54,19 @@ interface AppState {
   setRegion: (region: string | null) => void;
   
   fetchListings: () => Promise<void>;
-  fetchListingById: (id: string) => Promise<void>; // New Action
+  fetchListingById: (id: string) => Promise<void>;
   fetchCategories: () => Promise<void>;
   addListing: (listingData: CreateListingPayload, files: File[]) => Promise<void>;
   
+  // Chat Actions
+  fetchConversations: () => Promise<void>;
+  startConversation: (listingId: string, sellerId: string) => Promise<string>;
+  setActiveConversation: (id: string | null) => void;
+  fetchMessages: (conversationId: string) => Promise<void>;
+  sendMessage: (content: string) => Promise<void>;
+  subscribeToMessages: () => void;
+  unsubscribeFromMessages: () => void;
+
   toggleFavorite: (id: string) => void;
   
   checkSession: () => Promise<void>;
@@ -64,6 +79,9 @@ interface AppState {
   markMessagesRead: () => void;
 }
 
+// Keep track of subscription outside store to avoid serialization issues
+let messageSubscription: RealtimeChannel | null = null;
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -74,6 +92,11 @@ export const useAppStore = create<AppState>()(
       isLoading: false,
       isAuthLoading: true,
       error: null,
+      
+      // Chat State
+      conversations: [],
+      activeConversationId: null,
+      messages: [],
       
       // Filter State
       searchQuery: '',
@@ -98,23 +121,20 @@ export const useAppStore = create<AppState>()(
                 .from('categories')
                 .select('*')
                 .order('name');
-            
             if (error) throw error;
-            
             const mappedCategories: Category[] = (data || []).map((c: any) => ({
                 id: c.id,
                 name: c.name,
                 icon: c.icon_name || 'box',
                 count: 0 
             }));
-            
             set({ categories: mappedCategories });
         } catch (err: any) {
             console.error('Error fetching categories:', err);
         }
       },
 
-      // --- FETCH LISTINGS (Server-Side Filtering) ---
+      // --- FETCH LISTINGS ---
       fetchListings: async () => {
         set({ isLoading: true, error: null });
         const { searchQuery, selectedCategory, selectedRegion } = get();
@@ -124,34 +144,17 @@ export const useAppStore = create<AppState>()(
             .from('listings')
             .select(`
               *,
-              users (
-                full_name,
-                avatar_url,
-                verification_level
-              ),
-              categories (
-                 name,
-                 icon_name
-              )
+              users ( full_name, avatar_url, verification_level ),
+              categories ( name, icon_name )
             `)
             .eq('is_active', true);
 
-          if (searchQuery && searchQuery.trim() !== '') {
-            query = query.ilike('title', `%${searchQuery}%`);
-          }
-
-          if (selectedCategory) {
-            query = query.eq('category_id', selectedCategory);
-          }
-
-          if (selectedRegion && selectedRegion !== '') {
-            query = query.eq('region', selectedRegion);
-          }
+          if (searchQuery?.trim()) query = query.ilike('title', `%${searchQuery}%`);
+          if (selectedCategory) query = query.eq('category_id', selectedCategory);
+          if (selectedRegion) query = query.eq('region', selectedRegion);
 
           query = query.order('created_at', { ascending: false });
-
           const { data, error } = await query;
-
           if (error) throw error;
 
           const mappedListings: Listing[] = (data || []).map((item: any) => ({
@@ -177,7 +180,6 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // --- FETCH SINGLE LISTING ---
       fetchListingById: async (id: string) => {
         set({ isLoading: true, error: null, currentListing: null });
         try {
@@ -185,15 +187,8 @@ export const useAppStore = create<AppState>()(
             .from('listings')
             .select(`
               *,
-              users (
-                full_name,
-                avatar_url,
-                verification_level
-              ),
-              categories (
-                 name,
-                 icon_name
-              )
+              users ( full_name, avatar_url, verification_level ),
+              categories ( name, icon_name )
             `)
             .eq('id', id)
             .single();
@@ -224,38 +219,23 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // --- ADD LISTING ---
       addListing: async (listingData, files) => {
         const { user, fetchListings } = get();
         if (!user) return;
-
         set({ isLoading: true, error: null });
 
         try {
-          const priceString = listingData.price.replace(',', '.');
-          const priceValue = parseFloat(priceString);
-          
-          if (isNaN(priceValue) || priceValue < 0) {
-             throw new Error("Neplatná cena.");
-          }
+          const priceValue = parseFloat(listingData.price.replace(',', '.'));
+          if (isNaN(priceValue) || priceValue < 0) throw new Error("Neplatná cena.");
 
           const imageUrls: string[] = [];
-          
           for (const file of files) {
               const fileExt = file.name.split('.').pop();
               const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
               const filePath = `${user.id}/${fileName}`;
-
-              const { error: uploadError } = await supabase.storage
-                .from('images')
-                .upload(filePath, file);
-
+              const { error: uploadError } = await supabase.storage.from('images').upload(filePath, file);
               if (uploadError) throw uploadError;
-
-              const { data: publicUrlData } = supabase.storage
-                .from('images')
-                .getPublicUrl(filePath);
-                
+              const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(filePath);
               imageUrls.push(publicUrlData.publicUrl);
           }
 
@@ -273,13 +253,193 @@ export const useAppStore = create<AppState>()(
           });
 
           if (insertError) throw insertError;
-
           await fetchListings();
         } catch (err: any) {
           console.error('Error creating listing:', err);
           set({ error: err.message || 'Chyba pri vytváraní inzerátu', isLoading: false });
           throw err;
         }
+      },
+
+      // --- CHAT LOGIC ---
+
+      fetchConversations: async () => {
+        const { user } = get();
+        if (!user) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('conversations')
+                .select(`
+                    *,
+                    listings ( title, images, price ),
+                    buyer:users!buyer_id ( id, full_name, avatar_url, verification_level ),
+                    seller:users!seller_id ( id, full_name, avatar_url, verification_level )
+                `)
+                .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+                .order('updated_at', { ascending: false });
+
+            if (error) throw error;
+
+            const mappedConversations: Conversation[] = (data || []).map((c: any) => {
+                const isBuyer = c.buyer_id === user.id;
+                const otherUserData = isBuyer ? c.seller : c.buyer;
+                
+                return {
+                    id: c.id,
+                    listing_id: c.listing_id,
+                    buyer_id: c.buyer_id,
+                    seller_id: c.seller_id,
+                    created_at: c.created_at,
+                    updated_at: c.updated_at,
+                    listing: {
+                        title: c.listings?.title || 'Neznámy inzerát',
+                        images: c.listings?.images || [],
+                        price: c.listings?.price || 0
+                    },
+                    otherUser: {
+                        id: otherUserData?.id,
+                        full_name: otherUserData?.full_name || 'User',
+                        avatar_url: otherUserData?.avatar_url,
+                        verification_level: otherUserData?.verification_level || VerificationLevel.NONE
+                    },
+                    lastMessage: ''
+                };
+            });
+
+            set({ conversations: mappedConversations });
+        } catch (err) {
+            console.error('Error fetching conversations:', err);
+        }
+      },
+
+      startConversation: async (listingId: string, sellerId: string) => {
+        const { user } = get();
+        if (!user) throw new Error("Not logged in");
+
+        try {
+            const { data: existing } = await supabase
+                .from('conversations')
+                .select('id')
+                .eq('listing_id', listingId)
+                .eq('buyer_id', user.id)
+                .eq('seller_id', sellerId)
+                .single();
+
+            if (existing) {
+                set({ activeConversationId: existing.id });
+                return existing.id;
+            }
+
+            const { data: newConv, error } = await supabase
+                .from('conversations')
+                .insert({
+                    listing_id: listingId,
+                    buyer_id: user.id,
+                    seller_id: sellerId
+                })
+                .select('id')
+                .single();
+
+            if (error) throw error;
+            
+            await get().fetchConversations();
+            set({ activeConversationId: newConv.id });
+            return newConv.id;
+        } catch (err: any) {
+            console.error('Error starting conversation:', err);
+            throw err;
+        }
+      },
+
+      setActiveConversation: (id) => {
+          set({ activeConversationId: id });
+          if (id) {
+            get().fetchMessages(id);
+          } else {
+             get().unsubscribeFromMessages();
+          }
+      },
+
+      fetchMessages: async (conversationId: string) => {
+          try {
+              const { data, error } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('conversation_id', conversationId)
+                .order('created_at', { ascending: true });
+            
+              if (error) throw error;
+              set({ messages: data as Message[] });
+              get().subscribeToMessages();
+          } catch (err) {
+              console.error('Error fetching messages:', err);
+          }
+      },
+
+      sendMessage: async (content: string) => {
+          const { user, activeConversationId } = get();
+          if (!user || !activeConversationId) return;
+
+          try {
+              const { error } = await supabase
+                .from('messages')
+                .insert({
+                    conversation_id: activeConversationId,
+                    sender_id: user.id,
+                    content: content
+                });
+
+              if (error) throw error;
+              
+              await supabase
+                .from('conversations')
+                .update({ updated_at: new Date().toISOString() })
+                .eq('id', activeConversationId);
+                
+              // Refresh sidebar to sort by newest
+              get().fetchConversations();
+
+          } catch (err) {
+              console.error('Error sending message:', err);
+          }
+      },
+
+      subscribeToMessages: () => {
+          const { activeConversationId } = get();
+          if (!activeConversationId) return;
+
+          if (messageSubscription) {
+              supabase.removeChannel(messageSubscription);
+          }
+
+          messageSubscription = supabase
+            .channel('chat-room')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `conversation_id=eq.${activeConversationId}`
+                },
+                (payload) => {
+                    const newMessage = payload.new as Message;
+                    set((state) => ({
+                        messages: [...state.messages, newMessage]
+                    }));
+                    // Refresh sidebar to update timestamps/order
+                    get().fetchConversations();
+                }
+            )
+            .subscribe();
+      },
+
+      unsubscribeFromMessages: () => {
+          if (messageSubscription) {
+              supabase.removeChannel(messageSubscription);
+              messageSubscription = null;
+          }
       },
 
       toggleFavorite: (id) => set((state) => {
@@ -345,11 +505,7 @@ export const useAppStore = create<AppState>()(
               full_name: fullName,
               avatar_url: fullName.charAt(0).toUpperCase()
             });
-          
-          if (profileError) {
-             console.error("Profile creation failed", profileError);
-          }
-
+          if (profileError) console.error("Profile creation failed", profileError);
           await get().checkSession();
           set({ isAuthModalOpen: false });
         }
@@ -369,7 +525,8 @@ export const useAppStore = create<AppState>()(
       name: 'premiov-storage',
       partialize: (state) => ({ 
         favorites: state.favorites, 
-        language: state.language
+        language: state.language,
+        activeConversationId: state.activeConversationId // Persist active chat to survive refresh
       }), 
     }
   )

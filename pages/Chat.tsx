@@ -1,110 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import { useAppStore } from '../store/useStore';
-import { Search, Send, MoreVertical, Paperclip, CheckCheck, Phone, Video, ShieldCheck, MessageCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
-
-// Mock Data Types
-interface Message {
-  id: string;
-  sender: 'me' | 'other';
-  text: string;
-  timestamp: string;
-}
-
-interface Conversation {
-  id: string;
-  user: string;
-  avatar: string;
-  lastMessage: string;
-  time: string;
-  unread: number;
-  isVerified: boolean;
-  product: string;
-}
+import { Search, Send, MoreVertical, Paperclip, CheckCheck, Phone, Video, ShieldCheck, MessageCircle, Loader2 } from 'lucide-react';
 
 const Chat: React.FC = () => {
-  const { user, markMessagesRead } = useAppStore();
-  const [activeChat, setActiveChat] = useState<string>('1');
+  const { 
+      user, 
+      conversations, 
+      activeConversationId, 
+      setActiveConversation, 
+      messages, 
+      sendMessage, 
+      fetchConversations, 
+      fetchMessages,
+      unsubscribeFromMessages 
+  } = useAppStore();
+
   const [inputMessage, setInputMessage] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Ref to track if we've attempted to re-subscribe on mount
+  const hasSubscribedRef = useRef(false);
 
-  // Mock Conversations as requested
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: '1',
-      user: 'AutoCenter s.r.o.',
-      avatar: 'A',
-      lastMessage: 'Kedy by ste mohli prísť na obhliadku?',
-      time: '14:20',
-      unread: 1,
-      isVerified: true,
-      product: 'Mercedes-Benz S-Class Long'
-    },
-    {
-      id: '2',
-      user: 'Ján Novák',
-      avatar: 'J',
-      lastMessage: 'Je cena konečná alebo možná dohoda?',
-      time: 'Včera',
-      unread: 1,
-      isVerified: true,
-      product: 'Rolex Submariner'
-    },
-    {
-      id: '3',
-      user: 'Petra K.',
-      avatar: 'P',
-      lastMessage: 'Ďakujem za informácie.',
-      time: 'Po',
-      unread: 0,
-      isVerified: false,
-      product: 'Apple iPhone 15 Pro'
-    }
-  ]);
+  // Fetch conversations and restore subscription on mount
+  useEffect(() => {
+      fetchConversations();
+      
+      // If we have a persisted active conversation ID, we need to fetch messages
+      // and re-establish the realtime subscription because sockets don't persist.
+      if (activeConversationId && !hasSubscribedRef.current) {
+          fetchMessages(activeConversationId);
+          hasSubscribedRef.current = true;
+      }
+      
+      return () => {
+          unsubscribeFromMessages();
+      };
+  }, [fetchConversations, fetchMessages, unsubscribeFromMessages, activeConversationId]);
 
-  // Mock Messages for Active Chat
-  const [messages, setMessages] = useState<Message[]>([
-    { id: '1', sender: 'me', text: 'Dobrý deň, mám záujem o Mercedes S-Class.', timestamp: '14:10' },
-    { id: '2', sender: 'other', text: 'Dobrý deň, teší ma váš záujem. Auto je v perfektnom stave, garážované.', timestamp: '14:15' },
-    { id: '3', sender: 'other', text: 'Kedy by ste mohli prísť na obhliadku?', timestamp: '14:20' },
-  ]);
+  // Scroll to bottom when messages change
+  useEffect(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
-    
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      sender: 'me',
-      text: inputMessage,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    
-    setMessages([...messages, newMessage]);
+    await sendMessage(inputMessage);
     setInputMessage('');
-    
-    // Simulate mock reply
-    setTimeout(() => {
-        setMessages(prev => [...prev, {
-            id: (Date.now() + 1).toString(),
-            sender: 'other',
-            text: 'Rozumiem. Termín mi vyhovuje.',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }])
-    }, 2000);
   };
 
-  const handleChatSelect = (id: string) => {
-    setActiveChat(id);
-    // Mark as read mock logic
-    const updatedConvs = conversations.map(c => 
-        c.id === id ? { ...c, unread: 0 } : c
-    );
-    setConversations(updatedConvs);
-    markMessagesRead();
-  };
+  const activeConversation = conversations.find(c => c.id === activeConversationId);
 
-  const activeConversation = conversations.find(c => c.id === activeChat);
+  // Helper to format date nicely
+  const formatTime = (dateString: string) => {
+      const date = new Date(dateString);
+      const now = new Date();
+      if (date.toDateString() === now.toDateString()) {
+          return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      return date.toLocaleDateString();
+  };
 
   if (!user) {
       return (
@@ -127,7 +82,7 @@ const Chat: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-soft border border-gray-100 flex h-full overflow-hidden">
           
           {/* Sidebar (Chat List) */}
-          <div className="w-full md:w-96 border-r border-gray-100 flex flex-col bg-white">
+          <div className={`w-full md:w-96 border-r border-gray-100 flex flex-col bg-white ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
              {/* Header */}
              <div className="p-4 border-b border-gray-100 flex justify-between items-center">
                 <h2 className="font-bold text-xl text-gray-900">Správy</h2>
@@ -146,38 +101,36 @@ const Chat: React.FC = () => {
 
              {/* Conversation List */}
              <div className="flex-grow overflow-y-auto">
+                {conversations.length === 0 && (
+                    <div className="p-8 text-center text-gray-400 text-sm">
+                        Nemáte zatiaľ žiadne správy.
+                    </div>
+                )}
                 {conversations.map(chat => (
                    <div 
                       key={chat.id} 
-                      onClick={() => handleChatSelect(chat.id)}
-                      className={`p-4 flex gap-3 cursor-pointer transition-colors border-b border-gray-50 ${activeChat === chat.id ? 'bg-blue-50/50' : 'hover:bg-gray-50'}`}
+                      onClick={() => setActiveConversation(chat.id)}
+                      className={`p-4 flex gap-3 cursor-pointer transition-colors border-b border-gray-50 ${activeConversationId === chat.id ? 'bg-blue-50/50' : 'hover:bg-gray-50'}`}
                    >
                       <div className="relative">
-                         <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold text-lg">
-                            {chat.avatar}
+                         <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold text-lg overflow-hidden">
+                             {chat.otherUser?.avatar_url ? (
+                                 <img src={chat.otherUser.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                             ) : (
+                                 chat.otherUser?.full_name.charAt(0).toUpperCase()
+                             )}
                          </div>
-                         {chat.isVerified && (
-                             <div className="absolute -bottom-1 -right-1 bg-white p-0.5 rounded-full">
-                                <ShieldCheck size={14} className="text-slovak-blue fill-white" />
-                             </div>
-                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                          <div className="flex justify-between items-start mb-0.5">
-                            <h3 className={`font-semibold text-sm truncate ${chat.unread > 0 ? 'text-gray-900' : 'text-gray-700'}`}>
-                                {chat.user}
+                            <h3 className="font-semibold text-sm truncate text-gray-900">
+                                {chat.otherUser?.full_name}
                             </h3>
-                            <span className={`text-xs ${chat.unread > 0 ? 'text-slovak-blue font-bold' : 'text-gray-400'}`}>{chat.time}</span>
+                            <span className="text-xs text-gray-400">
+                                {formatTime(chat.updated_at)}
+                            </span>
                          </div>
-                         <p className="text-xs text-slovak-blue font-medium mb-1 truncate">{chat.product}</p>
-                         <div className="flex justify-between items-center">
-                             <p className={`text-sm truncate ${chat.unread > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
-                                {chat.lastMessage}
-                             </p>
-                             {chat.unread > 0 && (
-                                <span className="w-2 h-2 bg-slovak-blue rounded-full"></span>
-                             )}
-                         </div>
+                         <p className="text-xs text-slovak-blue font-medium mb-1 truncate">{chat.listing?.title}</p>
                       </div>
                    </div>
                 ))}
@@ -185,26 +138,35 @@ const Chat: React.FC = () => {
           </div>
 
           {/* Main Chat Area */}
-          <div className={`flex-1 flex flex-col bg-white ${!activeChat ? 'hidden md:flex' : 'flex'}`}>
-            {activeChat && activeConversation ? (
+          <div className={`flex-1 flex flex-col bg-white ${!activeConversationId ? 'hidden md:flex' : 'flex'}`}>
+            {activeConversationId && activeConversation ? (
               <>
                 {/* Chat Header */}
                 <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white z-10">
                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold">
-                         {activeConversation.avatar}
+                       {/* Back button for mobile */}
+                       <button onClick={() => setActiveConversation(null)} className="md:hidden p-2 -ml-2 text-gray-500">
+                           <Search className="transform rotate-180" size={20} /> {/* Using Search icon as Back icon temporarily or ArrowLeft if available */}
+                       </button>
+
+                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold overflow-hidden">
+                         {activeConversation.otherUser?.avatar_url ? (
+                            <img src={activeConversation.otherUser.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                         ) : (
+                            activeConversation.otherUser?.full_name.charAt(0).toUpperCase()
+                         )}
                       </div>
                       <div>
                          <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                             {activeConversation.user}
-                             {activeConversation.isVerified && (
+                             {activeConversation.otherUser?.full_name}
+                             {activeConversation.otherUser?.verification_level === 'BANK_ID' && (
                                 <span title="BankID Overený" className="flex items-center">
                                    <ShieldCheck size={16} className="text-slovak-blue" />
                                 </span>
                              )}
                          </h3>
-                         <p className="text-xs text-green-500 font-medium flex items-center gap-1">
-                             <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Online
+                         <p className="text-xs text-gray-500 font-medium">
+                            {activeConversation.listing?.title} • {activeConversation.listing?.price} €
                          </p>
                       </div>
                    </div>
@@ -212,35 +174,40 @@ const Chat: React.FC = () => {
                        <button className="p-2.5 hover:bg-gray-100 rounded-full text-slovak-blue transition-colors">
                            <Phone size={20} />
                        </button>
-                       <button className="p-2.5 hover:bg-gray-100 rounded-full text-slovak-blue transition-colors">
-                           <Video size={20} />
-                       </button>
                    </div>
                 </div>
                 
                 {/* Product Context Banner */}
                 <div className="bg-gray-50 px-4 py-2 flex items-center justify-between border-b border-gray-100 text-sm">
-                    <span className="text-gray-600">Týka sa inzerátu: <strong className="text-gray-900">{activeConversation.product}</strong></span>
-                    <a href="#" className="text-slovak-blue hover:underline font-medium">Zobraziť</a>
+                    <span className="text-gray-600">Týka sa inzerátu: <strong className="text-gray-900">{activeConversation.listing?.title}</strong></span>
                 </div>
 
                 {/* Messages Feed */}
                 <div className="flex-grow p-4 overflow-y-auto space-y-4 bg-gray-50/30">
-                   {messages.map((msg) => (
-                      <div key={msg.id} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                         <div className={`max-w-[70%] rounded-2xl p-4 shadow-sm ${
-                             msg.sender === 'me' 
-                               ? 'bg-slovak-blue text-white rounded-br-none' 
-                               : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
-                         }`}>
-                            <p className="text-sm leading-relaxed">{msg.text}</p>
-                            <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${msg.sender === 'me' ? 'text-blue-200' : 'text-gray-400'}`}>
-                                {msg.timestamp}
-                                {msg.sender === 'me' && <CheckCheck size={14} />}
+                   {messages.length === 0 && (
+                       <div className="text-center text-gray-400 mt-10">
+                           Toto je začiatok vašej konverzácie.
+                       </div>
+                   )}
+                   {messages.map((msg) => {
+                      const isMe = msg.sender_id === user.id;
+                      return (
+                        <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[70%] rounded-2xl p-4 shadow-sm ${
+                                isMe 
+                                    ? 'bg-slovak-blue text-white rounded-br-none' 
+                                    : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
+                            }`}>
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${isMe ? 'text-blue-200' : 'text-gray-400'}`}>
+                                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {isMe && <CheckCheck size={14} />}
+                                </div>
                             </div>
-                         </div>
-                      </div>
-                   ))}
+                        </div>
+                      );
+                   })}
+                   <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input Area */}

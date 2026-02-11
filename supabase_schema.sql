@@ -54,8 +54,32 @@ CREATE TABLE public.listings (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Conversations Table (NEW)
+CREATE TABLE public.conversations (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    buyer_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    seller_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    -- Prevent duplicate conversations for the same listing between same parties
+    UNIQUE(listing_id, buyer_id)
+);
+
+-- Messages Table (NEW)
+CREATE TABLE public.messages (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    conversation_id UUID REFERENCES public.conversations(id) ON DELETE CASCADE NOT NULL,
+    sender_id UUID REFERENCES public.users(id) ON DELETE SET NULL NOT NULL,
+    content TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- 3. POLICIES (Row Level Security)
 ALTER TABLE public.listings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public listings are viewable by everyone."
   ON public.listings FOR SELECT
@@ -64,3 +88,40 @@ CREATE POLICY "Public listings are viewable by everyone."
 CREATE POLICY "Users can insert their own listings."
   ON public.listings FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+
+-- Conversations Policies
+CREATE POLICY "Users can view their own conversations"
+ON public.conversations FOR SELECT
+USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
+
+CREATE POLICY "Buyers can start conversations"
+ON public.conversations FOR INSERT
+WITH CHECK (auth.uid() = buyer_id);
+
+-- Messages Policies
+CREATE POLICY "Users can view messages in their conversations"
+ON public.messages FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM public.conversations c
+        WHERE c.id = messages.conversation_id
+        AND (c.buyer_id = auth.uid() OR c.seller_id = auth.uid())
+    )
+);
+
+CREATE POLICY "Users can send messages in their conversations"
+ON public.messages FOR INSERT
+WITH CHECK (
+    auth.uid() = sender_id AND
+    EXISTS (
+        SELECT 1 FROM public.conversations c
+        WHERE c.id = conversation_id
+        AND (c.buyer_id = auth.uid() OR c.seller_id = auth.uid())
+    )
+);
+
+-- Enable Realtime
+BEGIN;
+  DROP PUBLICATION IF EXISTS supabase_realtime;
+  CREATE PUBLICATION supabase_realtime FOR TABLE messages;
+COMMIT;

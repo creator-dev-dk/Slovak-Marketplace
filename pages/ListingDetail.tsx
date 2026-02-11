@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 import Navbar from '../components/Navbar';
@@ -10,7 +10,9 @@ import { motion } from 'framer-motion';
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentListing, fetchListingById, toggleFavorite, favorites, isLoggedIn, openAuthModal, isLoading } = useAppStore();
+  const { currentListing, fetchListingById, toggleFavorite, favorites, isLoggedIn, openAuthModal, isLoading, user, startConversation } = useAppStore();
+  
+  const [isStartingChat, setIsStartingChat] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -31,7 +33,6 @@ const ListingDetail: React.FC = () => {
       );
   }
 
-  // Not Found State
   if (!currentListing) {
     return (
       <div className="min-h-screen flex flex-col bg-slovak-light">
@@ -49,12 +50,29 @@ const ListingDetail: React.FC = () => {
 
   const listing = currentListing;
   const isFavorite = favorites.includes(listing.id);
+  const isOwner = user?.id === listing.userId;
 
-  const handleContact = () => {
+  const handleContact = async () => {
       if (!isLoggedIn) {
           openAuthModal();
-      } else {
+          return;
+      }
+      
+      if (isOwner) {
+          alert("Nemôžete poslať správu sami sebe.");
+          return;
+      }
+
+      setIsStartingChat(true);
+      try {
+          // This creates a conversation in DB (or finds existing) and sets it as active in store
+          await startConversation(listing.id, listing.userId);
           navigate('/chat');
+      } catch (error) {
+          console.error("Failed to start chat", error);
+          alert("Nepodarilo sa začať konverzáciu.");
+      } finally {
+          setIsStartingChat(false);
       }
   }
 
@@ -172,13 +190,21 @@ const ListingDetail: React.FC = () => {
                       <Phone size={20} />
                       Zobraziť číslo
                    </button>
-                   <button 
-                      onClick={handleContact}
-                      className="w-full bg-white text-gray-700 border border-gray-200 font-bold py-4 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-                   >
-                      <MessageSquare size={20} />
-                      Napísať správu
-                   </button>
+                   {!isOwner && (
+                       <button 
+                          onClick={handleContact}
+                          disabled={isStartingChat}
+                          className="w-full bg-white text-gray-700 border border-gray-200 font-bold py-4 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                       >
+                          {isStartingChat ? <Loader2 className="animate-spin" size={20}/> : <MessageSquare size={20} />}
+                          Napísať správu
+                       </button>
+                   )}
+                   {isOwner && (
+                       <div className="w-full bg-gray-50 text-gray-500 font-medium py-4 rounded-xl text-center border border-gray-200">
+                           Toto je váš inzerát
+                       </div>
+                   )}
                 </div>
 
                 {/* Trust Badges */}
