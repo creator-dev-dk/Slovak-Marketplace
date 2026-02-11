@@ -18,7 +18,6 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
   const t = TRANSLATIONS[language];
   const isFavorite = favorites.includes(listing.id);
 
-  // Fallback image in case the main one fails
   const fallbackImage = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800";
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
@@ -33,9 +32,9 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
         initial={{ opacity: 0, y: 10 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-20px" }}
-        className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-indigo-300 hover:shadow-md transition-all duration-200 h-full flex flex-col"
+        className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-indigo-300 hover:shadow-md hover:shadow-indigo-500/5 transition-all duration-300 h-full flex flex-col relative"
       >
-        {/* Image Container */}
+        {/* Image Container - Strictly 16:10 or 4:3 */}
         <div className="relative aspect-[16/10] bg-slate-100 overflow-hidden border-b border-slate-100">
           <img 
             src={isError ? fallbackImage : imgSrc}
@@ -50,12 +49,12 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
             loading="lazy"
           />
           
-          {/* Favorite Button (Subtle) */}
+          {/* Favorite Button - Floating Action */}
           <button 
-            className={`absolute top-2 right-2 p-1.5 rounded-md transition-all ${
+            className={`absolute top-2 right-2 p-1.5 rounded-lg transition-all ${
               isFavorite 
                 ? 'bg-white text-rose-500 shadow-sm border border-rose-100' 
-                : 'bg-black/20 text-white hover:bg-white hover:text-rose-500 backdrop-blur-sm'
+                : 'bg-black/30 text-white hover:bg-white hover:text-rose-500 backdrop-blur-sm'
             }`}
             onClick={handleFavoriteClick}
           >
@@ -65,15 +64,15 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
             />
           </button>
 
-          {/* Badges - Pill Style */}
-          <div className="absolute top-2 left-2 flex gap-1.5">
+          {/* Badges - Sleek Pills */}
+          <div className="absolute top-2 left-2 flex flex-col gap-1.5 items-start">
             {listing.isPremium && (
-              <span className="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+              <span className="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm border border-indigo-500 tracking-wide">
                 PREMIUM
               </span>
             )}
              {listing.verificationLevel === VerificationLevel.BANK_ID && (
-              <span className="bg-emerald-500/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm">
+              <span className="bg-emerald-500/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm border border-emerald-400">
                 <ShieldCheck size={10} />
                 VERIFIED
               </span>
@@ -81,20 +80,20 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
           </div>
         </div>
         
-        {/* Content - Data Dense */}
+        {/* Content - Data Dense & Clean */}
         <div className="p-4 flex flex-col flex-grow">
           <div className="mb-2">
             <h3 className="font-semibold text-sm text-slate-900 line-clamp-1 group-hover:text-indigo-600 transition-colors leading-tight">
               {listing.title}
             </h3>
-            <div className="flex items-center text-slate-500 text-xs mt-1 gap-1">
-              <MapPin size={12} />
+            <div className="flex items-center text-slate-500 text-xs mt-1.5 gap-1.5">
+              <MapPin size={12} className="text-slate-400" />
               <span className="truncate">{listing.location}</span>
             </div>
           </div>
 
           <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between">
-            <div className="font-semibold text-slate-900">
+            <div className="font-bold text-slate-900 tracking-tight">
               {listing.price.toLocaleString('sk-SK')} <span className="text-slate-500 text-xs font-normal">{listing.currency}</span>
             </div>
             

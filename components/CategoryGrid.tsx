@@ -7,34 +7,30 @@ const CategoryGrid: React.FC = () => {
 
   return (
     <section className="py-2">
-        <h2 className="text-xl font-bold text-gray-900 mb-8 flex items-center gap-2">
+        <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
            Prehľadávať kategórie
-           <span className="text-slovak-gold text-2xl leading-none">.</span>
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat.id;
             return (
             <div 
               key={cat.id} 
               onClick={() => setCategory(isSelected ? null : cat.id)} // Toggle selection
-              className={`group flex flex-col items-center p-6 rounded-2xl transition-all duration-300 border cursor-pointer
+              className={`group flex flex-col items-center p-4 rounded-xl transition-all duration-200 border cursor-pointer
                 ${isSelected 
-                  ? 'bg-slovak-blue text-white shadow-lg border-slovak-blue scale-105' 
-                  : 'bg-gray-50/50 hover:bg-white border-transparent hover:border-gray-100 hover:shadow-soft'
+                  ? 'bg-indigo-50 border-indigo-200 shadow-sm' 
+                  : 'bg-white border-slate-200 hover:border-indigo-200 hover:shadow-sm'
                 }`}
             >
-              <div className="relative w-16 h-16 mb-4">
-                 {!isSelected && <div className="absolute inset-0 bg-slovak-blue/5 rounded-full group-hover:scale-110 transition-transform duration-300"></div>}
-                 <div className={`absolute inset-0 flex items-center justify-center transition-colors duration-300 ${isSelected ? 'text-slovak-gold' : 'text-slovak-blue group-hover:text-slovak-gold'}`}>
-                    {cat.iconComponent}
-                 </div>
+              <div className={`mb-3 p-2 rounded-lg transition-colors ${isSelected ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-50 text-slate-500 group-hover:text-indigo-500 group-hover:bg-indigo-50'}`}>
+                 {React.cloneElement(cat.iconComponent as React.ReactElement<any>, { size: 20 })}
               </div>
               
-              <span className={`font-semibold text-center transition-colors ${isSelected ? 'text-white' : 'text-gray-800 group-hover:text-slovak-blue'}`}>
+              <span className={`font-semibold text-sm text-center transition-colors ${isSelected ? 'text-indigo-900' : 'text-slate-700 group-hover:text-slate-900'}`}>
                 {cat.name}
               </span>
-              <span className={`text-xs mt-1 font-medium transition-colors ${isSelected ? 'text-blue-200' : 'text-gray-400 group-hover:text-slovak-gold/80'}`}>
+              <span className={`text-[10px] mt-1 font-medium transition-colors ${isSelected ? 'text-indigo-500' : 'text-slate-400'}`}>
                 {cat.count} inzerátov
               </span>
             </div>

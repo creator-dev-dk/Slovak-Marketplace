@@ -29,9 +29,9 @@ const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           
-          {/* Brand - SaaS Style */}
+          {/* Brand - SaaS Logo */}
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm shadow-indigo-200">
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm shadow-indigo-200 transition-transform group-hover:scale-105">
               P
             </div>
             <span className="font-semibold text-lg tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
@@ -39,47 +39,47 @@ const Navbar: React.FC = () => {
             </span>
           </Link>
 
-          {/* Search Bar - SaaS Input Style */}
+          {/* Search Bar - SaaS Command Palette Style */}
           <div className="hidden lg:flex items-center flex-1 max-w-md mx-8">
             <div className="relative w-full group">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-slate-400" />
+                <Search className="h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
               </div>
               <input
                 type="text"
-                className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg leading-5 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium"
+                className="block w-full pl-9 pr-12 py-2 border border-slate-200 rounded-lg leading-5 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium"
                 placeholder={t.nav.searchPlaceholder}
               />
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                 <span className="text-[10px] font-bold text-slate-400 bg-white border border-slate-200 rounded px-1.5 py-0.5">⌘K</span>
+              <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                 <kbd className="hidden sm:inline-flex items-center h-5 px-1.5 border border-slate-200 rounded bg-white font-sans text-[10px] font-medium text-slate-400">⌘K</kbd>
               </div>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3">
             
-            {/* Language */}
+            {/* Language Switcher - Minimal */}
             <button 
               onClick={toggleLanguage}
               className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors px-2 py-1.5 rounded-md hover:bg-slate-50"
             >
               <span>{language}</span>
-              <ChevronDown size={12} strokeWidth={3} />
+              <ChevronDown size={12} strokeWidth={2.5} />
             </button>
 
             {isLoggedIn && user ? (
-              <div className="flex items-center gap-3">
-                 {/* Icons */}
+              <div className="flex items-center gap-3 pl-2">
+                 {/* Notification Icons */}
                  <div className="flex items-center gap-1 border-r border-slate-200 pr-3 mr-1">
-                     <Link to="/profile" className="relative p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                     <Link to="/profile" className="relative p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors group">
                         <Heart size={18} className={favorites.length > 0 ? "fill-rose-500 stroke-rose-500" : ""} />
                      </Link>
 
                      <Link to="/chat" className="relative p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
                         <MessageSquare size={18} />
                         {unreadMessagesCount > 0 && (
-                          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-600 rounded-full border border-white"></span>
+                          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-600 rounded-full border-2 border-white"></span>
                         )}
                      </Link>
                      
@@ -88,9 +88,9 @@ const Navbar: React.FC = () => {
                      </button>
                  </div>
 
-                 {/* Profile Dropdown Trigger */}
-                 <Link to="/profile" className="flex items-center gap-2.5 cursor-pointer pl-1">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs">
+                 {/* Profile Avatar */}
+                 <Link to="/profile" className="flex items-center gap-2.5 cursor-pointer group">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs group-hover:border-indigo-300 transition-colors">
                       {user.avatar}
                     </div>
                  </Link>
@@ -104,10 +104,10 @@ const Navbar: React.FC = () => {
               </button>
             )}
 
-            {/* Primary CTA */}
+            {/* Primary CTA - Solid Indigo */}
             <button 
               onClick={handleAddListing}
-              className="flex items-center gap-1.5 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200 active:translate-y-0.5"
+              className="ml-2 flex items-center gap-1.5 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200 active:translate-y-0.5"
             >
               <Plus size={16} />
               <span>{t.nav.addListing}</span>
@@ -148,7 +148,7 @@ const Navbar: React.FC = () => {
                 <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  className="block w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-900 text-sm font-medium"
+                  className="block w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-900 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                   placeholder={t.nav.searchPlaceholder}
                 />
             </div>

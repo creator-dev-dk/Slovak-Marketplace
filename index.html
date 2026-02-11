@@ -14,24 +14,24 @@
               sans: ['"Inter"', 'sans-serif'],
             },
             colors: {
-              // Enterprise SaaS Palette (Slate & Indigo)
-              // Mapping "slovak" keys to new palette to update entire app automatically
+              // Enterprise SaaS Palette
+              // Mapping old "slovak" keys to new palette for compatibility
               slovak: {
-                blue: '#4F46E5', // Indigo 600 (Primary Action)
+                blue: '#4F46E5', // Indigo 600 (Primary Brand)
                 dark: '#0F172A', // Slate 900 (Headings)
-                gold: '#F59E0B', // Amber 500 (Accents/Warnings) - Toned down from gold
+                gold: '#F59E0B', // Amber 500 (Accents)
                 light: '#F8FAFC', // Slate 50 (App Background)
                 white: '#FFFFFF',
-                red: '#EF4444', // Red 500 (Errors/Destructive)
-                gray: '#F1F5F9', // Slate 100 (Secondary backgrounds)
+                red: '#EF4444', // Red 500
+                gray: '#F1F5F9', // Slate 100
               },
-              // Explicit Semantic Colors for new components
+              // Strict Semantic Palette
               slate: {
-                50: '#F8FAFC',
-                100: '#F1F5F9',
+                50: '#F8FAFC',  // App BG
+                100: '#F1F5F9', // Subtle BG
                 200: '#E2E8F0', // Borders
                 300: '#CBD5E1',
-                400: '#94A3B8', // Muted text
+                400: '#94A3B8', // Icons/Muted text
                 500: '#64748B', // Body text
                 600: '#475569',
                 700: '#334155',
@@ -42,18 +42,19 @@
                 50: '#EEF2FF',
                 100: '#E0E7FF',
                 500: '#6366F1',
-                600: '#4F46E5', // Primary Brand
+                600: '#4F46E5', // Primary Action
                 700: '#4338CA',
               }
             },
             boxShadow: {
-              'soft': '0 1px 2px 0 rgba(0, 0, 0, 0.05)', // shadow-sm equivalent
-              'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
-              'glow': '0 0 0 1px rgba(99, 102, 241, 0.1), 0 4px 12px rgba(99, 102, 241, 0.1)', // Indigo glow
+              'soft': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+              'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)',
+              'glow': '0 0 0 1px rgba(79, 70, 229, 0.1), 0 4px 12px rgba(79, 70, 229, 0.1)',
             },
             borderRadius: {
               'xl': '0.75rem',
               '2xl': '1rem',
+              '3xl': '1.5rem',
             }
           }
         }
@@ -63,21 +64,22 @@
       body {
         background-color: #F8FAFC; /* Slate 50 */
         color: #0F172A; /* Slate 900 */
+        font-family: 'Inter', sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
-      /* Custom Scrollbar for that SaaS feel */
+      /* Enterprise Scrollbar */
       ::-webkit-scrollbar {
         width: 10px;
         height: 10px;
       }
       ::-webkit-scrollbar-track {
-        background: #F1F5F9;
+        background: #F8FAFC;
       }
       ::-webkit-scrollbar-thumb {
         background: #CBD5E1;
         border-radius: 5px;
-        border: 2px solid #F1F5F9;
+        border: 2px solid #F8FAFC;
       }
       ::-webkit-scrollbar-thumb:hover {
         background: #94A3B8;
