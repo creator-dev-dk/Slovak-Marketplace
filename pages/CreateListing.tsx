@@ -1,30 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { Camera, Check, ChevronRight, ShieldCheck, Sparkles, Loader2, Upload } from 'lucide-react';
+import { Camera, ChevronRight, ShieldCheck, Loader2, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 
+// Exact matches for Postgres enum 'region_enum'
+const REGION_OPTIONS = [
+    'Bratislavský', 
+    'Trnavský', 
+    'Trenčiansky', 
+    'Nitriansky', 
+    'Žilinský', 
+    'Banskobystrický', 
+    'Prešovský', 
+    'Košický'
+];
+
 const CreateListing: React.FC = () => {
   const [step, setStep] = useState(1);
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   
   const navigate = useNavigate();
-  const { addListing, user, isLoading, openAuthModal } = useAppStore();
+  const { addListing, user, isLoading, isAuthLoading, openAuthModal, categories, fetchCategories } = useAppStore();
 
   const [formData, setFormData] = useState({
     title: '',
     price: '',
-    category: '',
+    categoryId: '',
     description: '',
     isPremium: false,
-    location: 'Bratislava'
+    city: '',
+    region: 'Bratislavský' // Default to first valid enum value
   });
 
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  // Loading state for auth to prevent FOUC (Flash of Unauthenticated Content)
+  if (isAuthLoading) {
+      return (
+         <div className="min-h-screen bg-slovak-light flex flex-col items-center justify-center">
+             <Loader2 className="animate-spin text-slovak-blue" size={40} />
+         </div>
+      );
+  }
+
   // Protect route
-  if (!user && !isLoading) {
+  if (!user) {
     return (
        <div className="min-h-screen bg-slovak-light flex flex-col">
           <Navbar />
@@ -41,23 +67,59 @@ const CreateListing: React.FC = () => {
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-       const selectedFile = e.target.files[0];
-       setFile(selectedFile);
-       setPreviewUrl(URL.createObjectURL(selectedFile));
+    if (e.target.files) {
+       const selectedFiles = Array.from(e.target.files) as File[];
+       if (files.length + selectedFiles.length > 3) {
+           alert("Maximálne môžete nahrať 3 fotografie.");
+           return;
+       }
+       
+       const newFiles = [...files, ...selectedFiles];
+       setFiles(newFiles);
+       
+       // Generate previews
+       const newPreviews = selectedFiles.map(file => URL.createObjectURL(file));
+       setPreviewUrls([...previewUrls, ...newPreviews]);
     }
+  };
+
+  const removeFile = (index: number) => {
+      const newFiles = [...files];
+      newFiles.splice(index, 1);
+      setFiles(newFiles);
+
+      const newPreviews = [...previewUrls];
+      URL.revokeObjectURL(newPreviews[index]); // Cleanup
+      newPreviews.splice(index, 1);
+      setPreviewUrls(newPreviews);
   };
 
   const handleNext = () => setStep(prev => prev + 1);
 
   const handlePublish = async () => {
-      if (!file) {
+      if (files.length === 0) {
         alert("Prosím nahrajte aspoň jednu fotku.");
         return;
       }
+      
+      if (!formData.categoryId) {
+          alert("Prosím vyberte kategóriu.");
+          return;
+      }
+
+      if (!formData.title || !formData.price || !formData.city) {
+          alert("Prosím vyplňte všetky povinné polia.");
+          return;
+      }
+
+      const priceVal = parseFloat(formData.price.replace(',', '.'));
+      if (isNaN(priceVal) || priceVal <= 0) {
+          alert("Prosím zadajte platnú cenu.");
+          return;
+      }
 
       try {
-        await addListing(formData, file);
+        await addListing(formData, files);
         navigate('/');
       } catch (error) {
          console.error(error);
@@ -95,34 +157,35 @@ const CreateListing: React.FC = () => {
             {step === 1 && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Čo chcete predať?</h1>
-                <p className="text-gray-500 mb-8">Nahrajte fotky vášho produktu.</p>
+                <p className="text-gray-500 mb-8">Nahrajte fotky vášho produktu (Max 3).</p>
 
-                <label 
-                  className="border-2 border-dashed border-gray-300 rounded-2xl p-12 flex flex-col items-center justify-center cursor-pointer hover:border-slovak-blue hover:bg-blue-50/30 transition-all group relative overflow-hidden h-64"
-                >
-                  <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                  
-                  {previewUrl ? (
-                     <div className="absolute inset-0">
-                        <img src={previewUrl} className="object-cover w-full h-full" alt="Uploaded" />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                           <div className="bg-white p-3 rounded-full">
-                              <Upload size={24} className="text-slovak-blue" />
-                           </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    {previewUrls.map((url, index) => (
+                        <div key={index} className="relative aspect-square rounded-2xl overflow-hidden group shadow-md border border-gray-100">
+                            <img src={url} className="w-full h-full object-cover" alt={`Preview ${index}`} />
+                            <button 
+                                onClick={() => removeFile(index)}
+                                className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full text-red-500 hover:bg-red-50 transition-colors shadow-sm"
+                            >
+                                <X size={16} />
+                            </button>
                         </div>
-                     </div>
-                  ) : (
-                    <>
-                      <div className="w-16 h-16 bg-blue-100 text-slovak-blue rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <Camera size={32} />
-                      </div>
-                      <h3 className="font-bold text-gray-900 text-lg">Nahrať fotografie</h3>
-                      <p className="text-sm text-gray-400 mt-2">JPG, PNG (Max 10MB)</p>
-                    </>
-                  )}
-                </label>
+                    ))}
+                    
+                    {files.length < 3 && (
+                        <label 
+                            className="aspect-square border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-slovak-blue hover:bg-blue-50/30 transition-all group"
+                        >
+                            <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileChange} />
+                            <div className="w-12 h-12 bg-blue-100 text-slovak-blue rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <Camera size={24} />
+                            </div>
+                            <span className="text-xs font-bold text-gray-500">Pridať fotku</span>
+                        </label>
+                    )}
+                </div>
                 
-                {previewUrl && (
+                {files.length > 0 && (
                    <div className="mt-8">
                       <button onClick={handleNext} className="w-full bg-slovak-blue text-white py-4 rounded-xl font-bold hover:bg-slovak-dark transition-all flex items-center justify-center gap-2">
                         Pokračovať na detaily <ChevronRight size={20} />
@@ -134,7 +197,7 @@ const CreateListing: React.FC = () => {
 
             {/* Step 2: Details Form */}
             {step === 2 && (
-               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+               <motion.div initial={{ opacity: 0, x: 0 }} animate={{ opacity: 1, x: 0 }}>
                   <h1 className="text-3xl font-bold text-gray-900 mb-8">Doplňte informácie</h1>
                   
                   <div className="space-y-6">
@@ -151,23 +214,35 @@ const CreateListing: React.FC = () => {
                          <div>
                            <label className="block text-sm font-bold text-gray-700 mb-2">Kategória</label>
                            <select 
-                              value={formData.category}
-                              onChange={(e) => setFormData({...formData, category: e.target.value})}
-                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-slovak-blue outline-none bg-white"
+                              value={formData.categoryId}
+                              onChange={(e) => setFormData({...formData, categoryId: e.target.value})}
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-slovak-blue outline-none bg-white appearance-none"
                            >
                               <option value="">Vyberte kategóriu</option>
-                              <option value="auto">Auto-Moto</option>
-                              <option value="real">Nehnuteľnosti</option>
-                              <option value="fashion">Móda</option>
-                              <option value="electro">Elektronika</option>
-                              <option value="other">Ostatné</option>
+                              {categories.map((cat) => (
+                                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                              ))}
                            </select>
                         </div>
                      </div>
                      
-                     <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Mesto</label>
-                        <input type="text" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-slovak-blue focus:ring-2 focus:ring-blue-100 outline-none transition-all" />
+                     <div className="grid grid-cols-2 gap-6">
+                        <div>
+                             <label className="block text-sm font-bold text-gray-700 mb-2">Kraj</label>
+                             <select 
+                                value={formData.region}
+                                onChange={(e) => setFormData({...formData, region: e.target.value})}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-slovak-blue outline-none bg-white appearance-none"
+                             >
+                                {REGION_OPTIONS.map((region) => (
+                                    <option key={region} value={region}>{region}</option>
+                                ))}
+                             </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Mesto</label>
+                            <input type="text" value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-slovak-blue focus:ring-2 focus:ring-blue-100 outline-none transition-all" placeholder="Napr. Petržalka" />
+                        </div>
                      </div>
 
                      <div>
@@ -204,10 +279,11 @@ const CreateListing: React.FC = () => {
                   </div>
 
                   <div className="bg-gray-50 rounded-2xl p-6 mb-8 flex gap-4 border border-gray-200">
-                     {previewUrl && <img src={previewUrl} className="w-24 h-24 object-cover rounded-lg" alt="Preview" />}
+                     {previewUrls.length > 0 && <img src={previewUrls[0]} className="w-24 h-24 object-cover rounded-lg" alt="Preview" />}
                      <div>
                         <h3 className="font-bold text-lg text-gray-900">{formData.title}</h3>
                         <p className="text-slovak-blue font-bold text-xl">{formData.price} €</p>
+                        <p className="text-sm text-gray-500">{formData.city}, {formData.region}</p>
                         <div className="flex items-center gap-2 mt-2">
                            {formData.isPremium && <span className="text-xs bg-slovak-gold/20 text-slovak-dark px-2 py-0.5 rounded font-bold">PREMIUM Listing</span>}
                         </div>

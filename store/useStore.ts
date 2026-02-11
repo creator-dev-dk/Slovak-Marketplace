@@ -1,9 +1,19 @@
 import { create } from 'zustand';
-import { Listing, VerificationLevel } from '../types';
+import { Listing, VerificationLevel, Category } from '../types';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 
 type Language = 'SK' | 'EN';
+
+interface CreateListingPayload {
+  title: string;
+  price: string;
+  categoryId: string;
+  description: string;
+  isPremium: boolean;
+  city: string;
+  region: string;
+}
 
 interface AppState {
   // Config
@@ -11,7 +21,9 @@ interface AppState {
 
   // Search & Data
   listings: Listing[];
+  categories: Category[]; 
   isLoading: boolean;
+  isAuthLoading: boolean; // Added loading state for auth
   error: string | null;
   searchQuery: string;
   selectedCategory: string | null;
@@ -31,7 +43,8 @@ interface AppState {
   setCategory: (category: string | null) => void;
   
   fetchListings: () => Promise<void>;
-  addListing: (listingData: any, file: File) => Promise<void>;
+  fetchCategories: () => Promise<void>;
+  addListing: (listingData: CreateListingPayload, files: File[]) => Promise<void>;
   
   toggleFavorite: (id: string) => void;
   
@@ -50,7 +63,9 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       language: 'SK',
       listings: [],
+      categories: [],
       isLoading: false,
+      isAuthLoading: true, // Default to true to prevent FOUC
       error: null,
       searchQuery: '',
       selectedCategory: null,
@@ -64,7 +79,30 @@ export const useAppStore = create<AppState>()(
       setSearchQuery: (query) => set({ searchQuery: query }),
       setCategory: (category) => set({ selectedCategory: category }),
 
-      // --- REAL DATA FETCHING ---
+      // --- FETCH CATEGORIES ---
+      fetchCategories: async () => {
+        try {
+            const { data, error } = await supabase
+                .from('categories')
+                .select('*')
+                .order('name');
+            
+            if (error) throw error;
+            
+            const mappedCategories: Category[] = (data || []).map((c: any) => ({
+                id: c.id,
+                name: c.name,
+                icon: c.icon_name || 'box',
+                count: 0 
+            }));
+            
+            set({ categories: mappedCategories });
+        } catch (err: any) {
+            console.error('Error fetching categories:', err);
+        }
+      },
+
+      // --- FETCH LISTINGS ---
       fetchListings: async () => {
         set({ isLoading: true, error: null });
         try {
@@ -76,6 +114,10 @@ export const useAppStore = create<AppState>()(
                 full_name,
                 avatar_url,
                 verification_level
+              ),
+              categories (
+                 name,
+                 icon_name
               )
             `)
             .eq('is_active', true)
@@ -88,9 +130,9 @@ export const useAppStore = create<AppState>()(
             title: item.title,
             price: item.price,
             currency: item.currency || '€',
-            location: `${item.city}`,
+            location: `${item.city}, ${item.region}`,
             imageUrl: item.images && item.images.length > 0 ? item.images[0] : '',
-            category: item.category_id || 'other', // In a real app, join categories table
+            category: item.categories?.name || 'Iné',
             isPremium: item.is_premium,
             verificationLevel: item.users?.verification_level as VerificationLevel || VerificationLevel.NONE,
             sellerName: item.users?.full_name || 'Predajca',
@@ -105,47 +147,57 @@ export const useAppStore = create<AppState>()(
       },
 
       // --- ADD LISTING + UPLOAD ---
-      addListing: async (listingData, file) => {
+      addListing: async (listingData, files) => {
         const { user, fetchListings } = get();
         if (!user) return;
 
         set({ isLoading: true, error: null });
 
         try {
-          // 1. Upload Image
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-          const filePath = `${user.id}/${fileName}`;
+          // Validate price
+          const priceValue = parseFloat(listingData.price.replace(',', '.'));
+          if (isNaN(priceValue) || priceValue < 0) {
+             throw new Error("Invalid price format");
+          }
 
-          const { error: uploadError } = await supabase.storage
-            .from('images')
-            .upload(filePath, file);
+          // 1. Upload Images
+          const imageUrls: string[] = [];
+          
+          for (const file of files) {
+              const fileExt = file.name.split('.').pop();
+              const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+              const filePath = `${user.id}/${fileName}`;
 
-          if (uploadError) throw uploadError;
+              const { error: uploadError } = await supabase.storage
+                .from('images')
+                .upload(filePath, file);
 
-          const { data: publicUrlData } = supabase.storage
-            .from('images')
-            .getPublicUrl(filePath);
+              if (uploadError) throw uploadError;
 
-          const imageUrl = publicUrlData.publicUrl;
+              const { data: publicUrlData } = supabase.storage
+                .from('images')
+                .getPublicUrl(filePath);
+                
+              imageUrls.push(publicUrlData.publicUrl);
+          }
 
           // 2. Insert Listing
           const { error: insertError } = await supabase.from('listings').insert({
             user_id: user.id,
             title: listingData.title,
-            price: listingData.price,
-            currency: '€',
-            city: listingData.location || 'Bratislava',
-            region: 'Bratislavský', // Default for MVP
-            images: [imageUrl],
+            price: priceValue,
+            currency: 'EUR',
+            city: listingData.city,
+            region: listingData.region, // Matches region_enum in SQL
+            category_id: listingData.categoryId, // UUID
+            images: imageUrls,
             is_premium: listingData.isPremium,
-            description: listingData.description,
-            category_id: null // Or map to category UUIDs if table exists
+            description: listingData.description
           });
 
           if (insertError) throw insertError;
 
-          // 3. Refresh
+          // 3. Refresh Listings
           await fetchListings();
         } catch (err: any) {
           console.error('Error creating listing:', err);
@@ -165,26 +217,33 @@ export const useAppStore = create<AppState>()(
 
       // --- AUTHENTICATION ---
       checkSession: async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+              const { data: profile } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
 
-          set({ 
-            isLoggedIn: true, 
-            user: { 
-              id: session.user.id, 
-              email: session.user.email,
-              name: profile?.full_name || session.user.email?.split('@')[0] || 'User', 
-              type: 'buyer', 
-              avatar: profile?.avatar_url || 'U' 
-            } 
-          });
-        } else {
-          set({ isLoggedIn: false, user: null });
+              set({ 
+                isLoggedIn: true, 
+                user: { 
+                  id: session.user.id, 
+                  email: session.user.email,
+                  name: profile?.full_name || session.user.email?.split('@')[0] || 'User', 
+                  type: 'buyer', 
+                  avatar: profile?.avatar_url || 'U' 
+                } 
+              });
+            } else {
+              set({ isLoggedIn: false, user: null });
+            }
+        } catch (error) {
+            console.error('Session check failed:', error);
+            set({ isLoggedIn: false, user: null });
+        } finally {
+            set({ isAuthLoading: false });
         }
       },
 
@@ -198,12 +257,10 @@ export const useAppStore = create<AppState>()(
       },
 
       register: async (email, password, fullName) => {
-        // 1. Sign Up
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) return { error };
 
         if (data.user) {
-          // 2. Create Profile row manually (if no SQL trigger)
           const { error: profileError } = await supabase
             .from('users')
             .insert({
@@ -215,7 +272,6 @@ export const useAppStore = create<AppState>()(
           
           if (profileError) {
              console.error("Profile creation failed", profileError);
-             // Allow login anyway, but profile might be incomplete
           }
 
           await get().checkSession();
