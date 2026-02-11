@@ -68,12 +68,12 @@ const Navbar: React.FC = () => {
             {/* Login / User Profile */}
             {isLoggedIn && user ? (
               <div className="flex items-center gap-4">
-                 <div className="flex items-center gap-2 cursor-pointer group">
-                    <div className="w-8 h-8 rounded-full bg-slovak-blue text-white flex items-center justify-center font-bold text-sm">
+                 <Link to="/profile" className="flex items-center gap-2 cursor-pointer group">
+                    <div className="w-8 h-8 rounded-full bg-slovak-blue text-white flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-white group-hover:ring-blue-100 transition-all">
                       {user.avatar}
                     </div>
-                    <span className="text-sm font-medium text-gray-700 group-hover:text-slovak-blue">{user.name}</span>
-                 </div>
+                    <span className="text-sm font-medium text-gray-700 group-hover:text-slovak-blue transition-colors">{user.name}</span>
+                 </Link>
                  <button onClick={logout} className="text-gray-400 hover:text-red-500 transition-colors" title="Odhlásiť">
                     <LogOut size={18} />
                  </button>
@@ -127,6 +127,12 @@ const Navbar: React.FC = () => {
                <button onClick={() => { openAuthModal(); setIsMenuOpen(false); }} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
                  Prihlásiť sa
                </button>
+            )}
+
+            {isLoggedIn && (
+              <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
+                Môj profil
+              </Link>
             )}
 
             <Link to="/about" className="block px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>
