@@ -29,6 +29,7 @@ export const MOCK_LISTINGS: Listing[] = [
     price: 450000,
     currency: '€',
     location: 'Bratislava - Staré Mesto',
+    // Architecture / Modern Building
     imageUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=800',
     category: 'real',
     isPremium: true,
@@ -38,11 +39,12 @@ export const MOCK_LISTINGS: Listing[] = [
   },
   {
     id: '2',
-    title: 'Škoda Superb Laurin & Klement 4x4',
-    price: 38900,
+    title: 'Mercedes-Benz S-Class Long',
+    price: 98900,
     currency: '€',
     location: 'Žilina',
-    imageUrl: 'https://images.unsplash.com/photo-1628864703986-e970a096384e?auto=format&fit=crop&q=80&w=800',
+    // Luxury Car Interior
+    imageUrl: 'https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?auto=format&fit=crop&q=80&w=800',
     category: 'auto',
     isPremium: true,
     verificationLevel: VerificationLevel.BANK_ID,
@@ -51,11 +53,12 @@ export const MOCK_LISTINGS: Listing[] = [
   },
   {
     id: '3',
-    title: 'Apple iPhone 15 Pro Max 256GB Titanium',
+    title: 'Apple iPhone 15 Pro Max Titanium',
     price: 1150,
     currency: '€',
     location: 'Košice - Juh',
-    imageUrl: 'https://images.unsplash.com/photo-1696446701796-da61225697cc?auto=format&fit=crop&q=80&w=800',
+    // Tech / Phone
+    imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=800',
     category: 'electro',
     isPremium: false,
     verificationLevel: VerificationLevel.BANK_ID,
@@ -64,11 +67,12 @@ export const MOCK_LISTINGS: Listing[] = [
   },
   {
     id: '4',
-    title: 'Rolex Datejust 41 Wimbledon',
-    price: 12800,
+    title: 'Rolex Submariner Date',
+    price: 14500,
     currency: '€',
     location: 'Bratislava - Ružinov',
-    imageUrl: 'https://images.unsplash.com/photo-1639037805626-4749622d0571?auto=format&fit=crop&q=80&w=800',
+    // Luxury Watch
+    imageUrl: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&q=80&w=800',
     category: 'fashion',
     isPremium: true,
     verificationLevel: VerificationLevel.CONCIERGE,
@@ -77,4 +81,4 @@ export const MOCK_LISTINGS: Listing[] = [
   },
 ];
 
-export const PRD_CONTENT = `...`; // Kept same as before but hidden for brevity
+export const PRD_CONTENT = `...`;

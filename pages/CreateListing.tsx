@@ -19,6 +19,7 @@ const CreateListing: React.FC = () => {
     price: '',
     category: '',
     description: '',
+    // Use a reliable Macbook image
     imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca4?auto=format&fit=crop&q=80&w=800'
   });
 

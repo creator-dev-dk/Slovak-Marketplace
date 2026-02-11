@@ -1,14 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Listing, VerificationLevel } from '../types';
 import { Heart, MapPin, ShieldCheck, BadgeCheck } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { useAppStore } from '../store/useStore';
 
 interface ListingCardProps {
   listing: Listing;
 }
 
 const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
+  const [imgSrc, setImgSrc] = useState(listing.imageUrl);
+  const [isError, setIsError] = useState(false);
+  
+  const { favorites, toggleFavorite } = useAppStore();
+  const isFavorite = favorites.includes(listing.id);
+
+  // Fallback image in case the main one fails
+  const fallbackImage = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800";
+
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFavorite(listing.id);
+  };
+
   return (
     <Link to={`/listing/${listing.id}`} className="block h-full">
       <motion.div 
@@ -20,8 +36,14 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
         {/* Image Container */}
         <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
           <img 
-            src={listing.imageUrl} 
+            src={isError ? fallbackImage : imgSrc}
             alt={listing.title} 
+            onError={() => {
+              if (!isError) {
+                setIsError(true);
+                setImgSrc(fallbackImage);
+              }
+            }}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             loading="lazy"
           />
@@ -30,15 +52,21 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           
           {/* Favorite Button */}
-          <button 
-            className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-md rounded-full text-gray-400 hover:text-red-500 hover:bg-white transition-all shadow-sm transform hover:scale-110 z-10"
-            onClick={(e) => {
-              e.preventDefault();
-              // Add to favorites logic
-            }}
+          <motion.button 
+            whileTap={{ scale: 0.8 }}
+            className={`absolute top-3 right-3 p-2 backdrop-blur-md rounded-full transition-all shadow-sm z-10 ${
+              isFavorite 
+                ? 'bg-white text-slovak-gold' 
+                : 'bg-white/90 text-gray-400 hover:text-slovak-gold hover:bg-white'
+            }`}
+            onClick={handleFavoriteClick}
           >
-            <Heart size={18} />
-          </button>
+            <Heart 
+              size={18} 
+              fill={isFavorite ? "#C5A059" : "none"} 
+              className={isFavorite ? "stroke-slovak-gold" : ""}
+            />
+          </motion.button>
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-2">

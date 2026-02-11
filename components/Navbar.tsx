@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Search, Plus, User, Menu, X, Globe, ChevronDown, LogOut } from 'lucide-react';
+import { Search, Plus, User, Menu, X, Globe, ChevronDown, LogOut, Heart, MessageSquare } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [lang, setLang] = useState<'SK' | 'EN'>('SK');
   const navigate = useNavigate();
   
-  const { isLoggedIn, user, openAuthModal, logout } = useAppStore();
+  const { isLoggedIn, user, openAuthModal, logout, favorites, unreadMessagesCount } = useAppStore();
 
   const handleAddListing = () => {
     if (!isLoggedIn) {
@@ -67,7 +68,29 @@ const Navbar: React.FC = () => {
 
             {/* Login / User Profile */}
             {isLoggedIn && user ? (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-5">
+                 {/* Favorites Icon */}
+                 <Link to="/profile" className="relative text-gray-400 hover:text-slovak-red transition-colors group">
+                    <Heart size={22} className={favorites.length > 0 ? "fill-slovak-red/10 stroke-slovak-red" : ""} />
+                    {favorites.length > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-slovak-red text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
+                        {favorites.length}
+                      </span>
+                    )}
+                 </Link>
+
+                 {/* Messages Icon */}
+                 <Link to="/messages" className="relative text-gray-400 hover:text-slovak-blue transition-colors group">
+                    <MessageSquare size={22} />
+                    {unreadMessagesCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white animate-pulse">
+                        {unreadMessagesCount}
+                      </span>
+                    )}
+                 </Link>
+
+                 <div className="h-6 w-px bg-gray-200 mx-1"></div>
+
                  <Link to="/profile" className="flex items-center gap-2 cursor-pointer group">
                     <div className="w-8 h-8 rounded-full bg-slovak-blue text-white flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-white group-hover:ring-blue-100 transition-all">
                       {user.avatar}
@@ -99,7 +122,15 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center gap-4">
+             {isLoggedIn && (
+               <Link to="/messages" className="relative text-gray-600">
+                  <MessageSquare size={24} />
+                   {unreadMessagesCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
+                    )}
+               </Link>
+             )}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="text-gray-600 hover:text-slovak-blue p-2"
@@ -111,8 +142,14 @@ const Navbar: React.FC = () => {
       </div>
 
       {/* Mobile Menu */}
+      <AnimatePresence>
       {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 absolute w-full pb-4 shadow-xl z-40">
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="md:hidden bg-white border-t border-gray-100 overflow-hidden shadow-xl"
+        >
           <div className="px-4 pt-4 pb-3 space-y-3">
              <div className="relative">
                 <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -130,9 +167,16 @@ const Navbar: React.FC = () => {
             )}
 
             {isLoggedIn && (
-              <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
-                Môj profil
-              </Link>
+              <>
+                <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
+                  Môj profil
+                  {favorites.length > 0 && <span className="text-xs font-bold text-slovak-red">{favorites.length} obľúbených</span>}
+                </Link>
+                <Link to="/messages" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
+                  Správy
+                  {unreadMessagesCount > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{unreadMessagesCount}</span>}
+                </Link>
+              </>
             )}
 
             <Link to="/about" className="block px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setIsMenuOpen(false)}>
@@ -149,8 +193,9 @@ const Navbar: React.FC = () => {
               <span>Pridať inzerát</span>
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </nav>
   );
 };

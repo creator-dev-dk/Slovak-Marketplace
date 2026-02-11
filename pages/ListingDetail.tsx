@@ -1,15 +1,27 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { MapPin, ShieldCheck, Share2, Heart, ArrowLeft, CheckCircle2, BadgeCheck, MessageSquare, Phone } from 'lucide-react';
 import { VerificationLevel } from '../types';
+import { motion } from 'framer-motion';
 
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { listings } = useAppStore();
+  const navigate = useNavigate();
+  const { listings, toggleFavorite, favorites, isLoggedIn, openAuthModal } = useAppStore();
   const listing = listings.find(l => l.id === id);
+
+  const isFavorite = listing ? favorites.includes(listing.id) : false;
+
+  const handleContact = () => {
+      if (!isLoggedIn) {
+          openAuthModal();
+      } else {
+          navigate('/messages');
+      }
+  }
 
   if (!listing) {
     return (
@@ -52,9 +64,13 @@ const ListingDetail: React.FC = () => {
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute top-4 right-4 flex gap-3">
-                   <button className="p-3 bg-white/80 backdrop-blur-md rounded-full text-gray-600 hover:text-red-500 hover:bg-white transition-all shadow-lg">
-                      <Heart size={20} />
-                   </button>
+                   <motion.button 
+                     whileTap={{ scale: 0.8 }}
+                     onClick={() => toggleFavorite(listing.id)}
+                     className="p-3 bg-white/80 backdrop-blur-md rounded-full text-gray-600 hover:text-slovak-gold hover:bg-white transition-all shadow-lg"
+                   >
+                      <Heart size={20} fill={isFavorite ? "#C5A059" : "none"} className={isFavorite ? "stroke-slovak-gold" : ""} />
+                   </motion.button>
                    <button className="p-3 bg-white/80 backdrop-blur-md rounded-full text-gray-600 hover:text-slovak-blue hover:bg-white transition-all shadow-lg">
                       <Share2 size={20} />
                    </button>
@@ -131,7 +147,10 @@ const ListingDetail: React.FC = () => {
                       <Phone size={20} />
                       Zobraziť číslo
                    </button>
-                   <button className="w-full bg-white text-gray-700 border border-gray-200 font-bold py-4 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                   <button 
+                      onClick={handleContact}
+                      className="w-full bg-white text-gray-700 border border-gray-200 font-bold py-4 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                   >
                       <MessageSquare size={20} />
                       Napísať správu
                    </button>
