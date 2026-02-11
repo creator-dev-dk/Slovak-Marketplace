@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="sk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prémiov | Bazár pre náročných</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Inter"', 'sans-serif'],
+            },
+            colors: {
+              slovak: {
+                blue: '#0B3D91', // Deep Slovak Blue
+                dark: '#051C42', // Darker shade for text
+                gold: '#C5A059', // Premium Gold/Bronze
+                light: '#F8F9FA', // Background
+                white: '#FFFFFF',
+                red: '#EE3524', // Slovak Flag Red (Accent)
+                gray: '#F3F4F6', // Light Gray for sections
+              }
+            },
+            boxShadow: {
+              'soft': '0 4px 20px -2px rgba(11, 61, 145, 0.08)',
+              'glow': '0 0 15px rgba(197, 160, 89, 0.3)',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #F8F9FA;
+        color: #1F2937;
+      }
+      .premium-gradient {
+        background: linear-gradient(135deg, #0B3D91 0%, #051C42 100%);
+      }
+      .gold-gradient-text {
+        background: linear-gradient(to right, #C5A059, #E5C585, #C5A059);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        background-size: 200% auto;
+        animation: shine 4s linear infinite;
+      }
+      @keyframes shine {
+        to {
+          background-position: 200% center;
+        }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.13.0",
+    "framer-motion": "https://esm.sh/framer-motion@^12.34.0",
+    "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "zustand": "https://esm.sh/zustand@^5.0.11"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
