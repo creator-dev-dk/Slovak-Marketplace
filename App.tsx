@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
@@ -7,6 +8,7 @@ import CreateListing from './pages/CreateListing';
 import EditListing from './pages/EditListing';
 import EditProfile from './pages/EditProfile';
 import UserProfile from './pages/UserProfile';
+import Favorites from './pages/Favorites';
 import Chat from './pages/Chat';
 import ScrollToTop from './components/ScrollToTop';
 import AuthModal from './components/AuthModal';
@@ -31,6 +33,8 @@ const App: React.FC = () => {
         <Route path="/edit/:id" element={<EditListing />} />
         <Route path="/settings" element={<EditProfile />} />
         <Route path="/profile" element={<UserProfile />} />
+        <Route path="/profile/:id" element={<UserProfile />} /> {/* Public Profile Route */}
+        <Route path="/favorites" element={<Favorites />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/about" element={<About />} />
         <Route path="*" element={<Navigate to="/" replace />} />

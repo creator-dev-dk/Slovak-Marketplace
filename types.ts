@@ -28,8 +28,8 @@ export interface Listing {
   imageUrl: string;
   category: string;
   isPremium: boolean;
-  isActive?: boolean; // Added for status management
-  viewsCount?: number; // Added for analytics
+  isActive?: boolean;
+  viewsCount?: number;
   verificationLevel: VerificationLevel;
   sellerName: string;
   postedAt: string;
@@ -49,7 +49,27 @@ export interface CreateListingPayload {
 export interface User {
   id: string;
   name: string;
-  isVerified: boolean;
+  email?: string;
+  type?: 'buyer' | 'seller';
+  avatar?: string;
+  verificationLevel?: VerificationLevel;
+  rating?: number;
+  reviewsCount?: number;
+}
+
+export interface Review {
+  id: string;
+  reviewerId: string;
+  reviewerName: string;
+  reviewerAvatar?: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
+export interface Favorite {
+  id: string;
+  listingId: string;
 }
 
 // --- CHAT TYPES ---

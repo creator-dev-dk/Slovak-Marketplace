@@ -1,5 +1,6 @@
+
 import { create } from 'zustand';
-import { Listing, VerificationLevel, Category, Conversation, Message, CreateListingPayload } from '../types';
+import { Listing, VerificationLevel, Category, Conversation, Message, CreateListingPayload, User, Review } from '../types';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -31,12 +32,15 @@ interface AppState {
   selectedRegion: string | null;
   
   // User Actions
-  favorites: string[];
+  favorites: string[]; // List of IDs
+  reviews: Review[];
+  viewedProfile: User | null; // For public profiles
+  
   unreadMessagesCount: number;
   
   // Auth State
   isLoggedIn: boolean;
-  user: { id: string; name: string; email?: string; type: 'buyer' | 'seller'; avatar?: string } | null;
+  user: User | null;
   isAuthModalOpen: boolean;
   
   // Actions
@@ -46,7 +50,7 @@ interface AppState {
   setRegion: (region: string | null) => void;
   
   fetchListings: () => Promise<void>;
-  fetchUserListings: () => Promise<void>;
+  fetchUserListings: (userId?: string) => Promise<void>;
   fetchListingById: (id: string) => Promise<void>;
   fetchCategories: () => Promise<void>;
   addListing: (listingData: CreateListingPayload, files: File[]) => Promise<void>;
@@ -56,7 +60,12 @@ interface AppState {
   incrementViewCount: (id: string) => Promise<void>;
   
   // User Profile Actions
+  fetchUserProfile: (userId: string) => Promise<void>;
   updateProfile: (fullName: string, avatarFile?: File) => Promise<void>;
+  fetchFavorites: () => Promise<void>;
+  toggleFavorite: (listingId: string) => Promise<void>;
+  fetchReviews: (userId: string) => Promise<void>;
+  addReview: (revieweeId: string, rating: number, comment: string) => Promise<void>;
 
   // Chat Actions
   fetchConversations: () => Promise<void>;
@@ -67,8 +76,6 @@ interface AppState {
   subscribeToMessages: () => void;
   unsubscribeFromMessages: () => void;
   fetchUnreadCount: () => Promise<void>;
-
-  toggleFavorite: (id: string) => void;
   
   checkSession: () => Promise<void>;
   login: (email: string, password: string) => Promise<{ error: any }>;
@@ -80,7 +87,6 @@ interface AppState {
   markMessagesRead: () => void;
 }
 
-// Keep track of subscription outside store to avoid serialization issues
 let messageSubscription: RealtimeChannel | null = null;
 
 export const useAppStore = create<AppState>()(
@@ -107,6 +113,8 @@ export const useAppStore = create<AppState>()(
       selectedRegion: null,
       
       favorites: [],
+      reviews: [],
+      viewedProfile: null,
       unreadMessagesCount: 0,
       isLoggedIn: false,
       user: null,
@@ -120,11 +128,7 @@ export const useAppStore = create<AppState>()(
       // --- FETCH CATEGORIES ---
       fetchCategories: async () => {
         try {
-            const { data, error } = await supabase
-                .from('categories')
-                .select('*')
-                .order('name');
-            if (error) throw error;
+            const { data } = await supabase.from('categories').select('*').order('name');
             const mappedCategories: Category[] = (data || []).map((c: any) => ({
                 id: c.id,
                 name: c.name,
@@ -132,12 +136,10 @@ export const useAppStore = create<AppState>()(
                 count: 0 
             }));
             set({ categories: mappedCategories });
-        } catch (err: any) {
-            console.error('Error fetching categories:', err);
-        }
+        } catch (err) { console.error(err); }
       },
 
-      // --- FETCH LISTINGS (PUBLIC) ---
+      // --- FETCH LISTINGS ---
       fetchListings: async () => {
         set({ isLoading: true, error: null });
         const { searchQuery, selectedCategory, selectedRegion } = get();
@@ -145,11 +147,7 @@ export const useAppStore = create<AppState>()(
         try {
           let query = supabase
             .from('listings')
-            .select(`
-              *,
-              users ( full_name, avatar_url, verification_level ),
-              categories ( name, icon_name )
-            `)
+            .select(`*, users ( full_name, avatar_url, verification_level ), categories ( name, icon_name )`)
             .eq('is_active', true);
 
           if (searchQuery?.trim()) query = query.ilike('title', `%${searchQuery}%`);
@@ -160,7 +158,7 @@ export const useAppStore = create<AppState>()(
           const { data, error } = await query;
           if (error) throw error;
 
-          const mappedListings: Listing[] = (data || []).map((item: any) => ({
+          const mappedListings = (data || []).map((item: any) => ({
             id: item.id,
             userId: item.user_id,
             title: item.title,
@@ -180,31 +178,26 @@ export const useAppStore = create<AppState>()(
 
           set({ listings: mappedListings, isLoading: false });
         } catch (err: any) {
-          console.error('Error fetching listings:', err);
           set({ error: err.message, isLoading: false });
         }
       },
 
-      // --- FETCH USER LISTINGS (PRIVATE) ---
-      fetchUserListings: async () => {
-        const { user } = get();
-        if (!user) return;
-        set({ isLoading: true, error: null });
+      fetchUserListings: async (userId) => {
+        // If userId is provided, fetch for that user. Else fetch for logged in user.
+        const targetId = userId || get().user?.id;
+        if (!targetId) return;
+        set({ isLoading: true });
 
         try {
           const { data, error } = await supabase
             .from('listings')
-            .select(`
-              *,
-              users ( full_name, avatar_url, verification_level ),
-              categories ( name, icon_name )
-            `)
-            .eq('user_id', user.id)
+            .select(`*, users ( full_name, avatar_url, verification_level ), categories ( name, icon_name )`)
+            .eq('user_id', targetId)
             .order('created_at', { ascending: false });
 
           if (error) throw error;
 
-          const mappedListings: Listing[] = (data || []).map((item: any) => ({
+          const mappedListings = (data || []).map((item: any) => ({
             id: item.id,
             userId: item.user_id,
             title: item.title,
@@ -223,9 +216,7 @@ export const useAppStore = create<AppState>()(
           }));
 
           set({ userListings: mappedListings, isLoading: false });
-        } catch (err: any) {
-          console.error('Error fetching user listings:', err);
-        }
+        } catch (err) { console.error(err); set({ isLoading: false }); }
       },
 
       fetchListingById: async (id: string) => {
@@ -233,17 +224,11 @@ export const useAppStore = create<AppState>()(
         try {
            const { data, error } = await supabase
             .from('listings')
-            .select(`
-              *,
-              users ( full_name, avatar_url, verification_level ),
-              categories ( name, icon_name )
-            `)
+            .select(`*, users ( full_name, avatar_url, verification_level ), categories ( name, icon_name )`)
             .eq('id', id)
             .single();
 
            if (error) throw error;
-           if (!data) throw new Error('Listing not found');
-
            const mappedListing: Listing = {
              id: data.id,
              userId: data.user_id,
@@ -261,39 +246,29 @@ export const useAppStore = create<AppState>()(
              postedAt: new Date(data.created_at).toLocaleDateString('sk-SK'),
              description: data.description,
            };
-
            set({ currentListing: mappedListing, isLoading: false });
-        } catch (err: any) {
-           console.error('Error fetching listing:', err);
-           set({ error: err.message, isLoading: false });
-        }
+        } catch (err: any) { set({ error: err.message, isLoading: false }); }
       },
 
       addListing: async (listingData, files) => {
-        const { user, fetchListings, fetchUserListings } = get();
+        const { user } = get();
         if (!user) return;
-        set({ isLoading: true, error: null });
-
+        set({ isLoading: true });
         try {
           const priceValue = parseFloat(listingData.price.replace(',', '.'));
-          if (isNaN(priceValue) || priceValue < 0) throw new Error("Neplatná cena.");
-
           const imageUrls: string[] = [];
           for (const file of files) {
               const fileExt = file.name.split('.').pop();
               const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
               const filePath = `${user.id}/${fileName}`;
-              const { error: uploadError } = await supabase.storage.from('images').upload(filePath, file);
-              if (uploadError) throw uploadError;
-              const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(filePath);
-              imageUrls.push(publicUrlData.publicUrl);
+              await supabase.storage.from('images').upload(filePath, file);
+              const { data } = supabase.storage.from('images').getPublicUrl(filePath);
+              imageUrls.push(data.publicUrl);
           }
-
-          const { error: insertError } = await supabase.from('listings').insert({
+          const { error } = await supabase.from('listings').insert({
             user_id: user.id,
             title: listingData.title,
             price: priceValue,
-            currency: 'EUR',
             city: listingData.city,
             region: listingData.region,
             category_id: listingData.categoryId,
@@ -301,516 +276,285 @@ export const useAppStore = create<AppState>()(
             is_premium: listingData.isPremium,
             description: listingData.description
           });
-
-          if (insertError) throw insertError;
-          await Promise.all([fetchListings(), fetchUserListings()]);
-        } catch (err: any) {
-          console.error('Error creating listing:', err);
-          set({ error: err.message || 'Chyba pri vytváraní inzerátu', isLoading: false });
-          throw err;
-        }
+          if (error) throw error;
+          await Promise.all([get().fetchListings(), get().fetchUserListings()]);
+        } catch (err: any) { set({ error: err.message, isLoading: false }); throw err; }
       },
 
       updateListing: async (id, listingData) => {
-        set({ isLoading: true, error: null });
-        try {
-          const updates: any = {};
-          if (listingData.title) updates.title = listingData.title;
-          if (listingData.price) updates.price = parseFloat(listingData.price.replace(',', '.'));
-          if (listingData.description) updates.description = listingData.description;
-          if (listingData.categoryId) updates.category_id = listingData.categoryId;
-          if (listingData.city) updates.city = listingData.city;
-          if (listingData.region) updates.region = listingData.region;
-          if (listingData.isPremium !== undefined) updates.is_premium = listingData.isPremium;
-          updates.updated_at = new Date().toISOString();
-
-          const { error } = await supabase
-            .from('listings')
-            .update(updates)
-            .eq('id', id);
-
-          if (error) throw error;
-          
-          await Promise.all([
-             get().fetchListings(),
-             get().fetchUserListings(),
-             get().fetchListingById(id)
-          ]);
-        } catch (err: any) {
-           console.error('Error updating listing:', err);
-           set({ error: err.message, isLoading: false });
-           throw err;
-        } finally {
-            set({ isLoading: false });
-        }
-      },
-
-      deleteListing: async (id: string) => {
         set({ isLoading: true });
         try {
-            const { error } = await supabase
-                .from('listings')
-                .delete()
-                .eq('id', id);
-            
-            if (error) throw error;
-            
-            // Optimistic update for both lists
+          const updates: any = { ...listingData, updated_at: new Date().toISOString() };
+          if (listingData.price) updates.price = parseFloat(listingData.price.replace(',', '.'));
+          await supabase.from('listings').update(updates).eq('id', id);
+          await Promise.all([get().fetchListings(), get().fetchUserListings(), get().fetchListingById(id)]);
+        } catch (err: any) { set({ error: err.message, isLoading: false }); } finally { set({ isLoading: false }); }
+      },
+
+      deleteListing: async (id) => {
+        set({ isLoading: true });
+        try {
+            await supabase.from('listings').delete().eq('id', id);
             const newListings = get().listings.filter(l => l.id !== id);
             const newUserListings = get().userListings.filter(l => l.id !== id);
             set({ listings: newListings, userListings: newUserListings });
-        } catch (err: any) {
-            console.error('Error deleting listing:', err);
-            set({ error: err.message });
-        } finally {
-            set({ isLoading: false });
-        }
+        } catch (err: any) { console.error(err); } finally { set({ isLoading: false }); }
       },
 
-      toggleListingStatus: async (id: string, isActive: boolean) => {
+      toggleListingStatus: async (id, isActive) => {
         try {
-            const { error } = await supabase
-                .from('listings')
-                .update({ is_active: isActive })
-                .eq('id', id);
-
-            if (error) throw error;
-            
-            // Update currentListing if it matches
+            await supabase.from('listings').update({ is_active: isActive }).eq('id', id);
             const { currentListing } = get();
-            if (currentListing && currentListing.id === id) {
-                set({ currentListing: { ...currentListing, isActive } });
-            }
-
-            // Refresh lists
-            await Promise.all([
-                get().fetchListings(),
-                get().fetchUserListings()
-            ]);
-        } catch (err: any) {
-            console.error('Error updating listing status:', err);
-        }
+            if (currentListing?.id === id) set({ currentListing: { ...currentListing, isActive } });
+            await Promise.all([get().fetchListings(), get().fetchUserListings()]);
+        } catch (err) { console.error(err); }
       },
 
-      incrementViewCount: async (id: string) => {
+      incrementViewCount: async (id) => {
+         try { await supabase.rpc('increment_views', { row_id: id }); } catch (e) { /* ignore */ }
+      },
+
+      // --- USER PROFILE & REVIEWS ---
+      fetchUserProfile: async (userId) => {
+          set({ isLoading: true, viewedProfile: null });
           try {
-              // Attempt RPC call
-              const { error } = await supabase.rpc('increment_views', { row_id: id });
+              const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
+              if (error) throw error;
               
-              if (error) {
-                  // Fallback: Read-Modify-Write if RPC is missing
-                  // Not atomic, but sufficient for view counts
-                  const { data } = await supabase.from('listings').select('views_count').eq('id', id).single();
-                  if (data) {
-                      await supabase.from('listings').update({ views_count: (data.views_count || 0) + 1 }).eq('id', id);
-                  }
-              }
-          } catch (e) {
-              // Ignore analytics errors
-          }
+              // Calculate avg rating
+              const { data: reviews } = await supabase.from('reviews').select('rating').eq('reviewee_id', userId);
+              const avg = reviews?.length ? reviews.reduce((a, b) => a + b.rating, 0) / reviews.length : 0;
+              
+              set({ 
+                  viewedProfile: {
+                      id: data.id,
+                      name: data.full_name,
+                      avatar: data.avatar_url,
+                      verificationLevel: data.verification_level,
+                      rating: avg,
+                      reviewsCount: reviews?.length || 0
+                  },
+                  isLoading: false
+              });
+          } catch(e) { console.error(e); set({ isLoading: false }); }
       },
 
       updateProfile: async (fullName, avatarFile) => {
         const { user } = get();
         if (!user) return;
         set({ isLoading: true });
-
         try {
             let avatarUrl = user.avatar;
-
-            // Upload new avatar if provided
             if (avatarFile) {
-                const fileExt = avatarFile.name.split('.').pop();
-                const fileName = `avatar_${Date.now()}.${fileExt}`;
-                const filePath = `${user.id}/${fileName}`;
-                
-                const { error: uploadError } = await supabase.storage.from('images').upload(filePath, avatarFile);
-                if (uploadError) throw uploadError;
-                
+                const filePath = `${user.id}/avatar_${Date.now()}`;
+                await supabase.storage.from('images').upload(filePath, avatarFile);
                 const { data } = supabase.storage.from('images').getPublicUrl(filePath);
                 avatarUrl = data.publicUrl;
             }
+            await supabase.from('users').update({ full_name: fullName, avatar_url: avatarUrl }).eq('id', user.id);
+            set({ user: { ...user, name: fullName, avatar: avatarUrl } });
+        } catch (err: any) { console.error(err); } finally { set({ isLoading: false }); }
+      },
 
-            // Update user profile in DB
-            const { error } = await supabase
-                .from('users')
-                .update({ 
-                    full_name: fullName,
-                    avatar_url: avatarUrl !== user.avatar ? avatarUrl : undefined
-                })
-                .eq('id', user.id);
+      fetchFavorites: async () => {
+          const { user } = get();
+          if(!user) return;
+          const { data } = await supabase.from('favorites').select('listing_id').eq('user_id', user.id);
+          if(data) set({ favorites: data.map(f => f.listing_id) });
+      },
 
-            if (error) throw error;
+      toggleFavorite: async (listingId) => {
+          const { user, favorites } = get();
+          const isFav = favorites.includes(listingId);
+          
+          // Optimistic update
+          set({ favorites: isFav ? favorites.filter(id => id !== listingId) : [...favorites, listingId] });
 
-            // Update local state
-            set({ 
-                user: {
-                    ...user,
-                    name: fullName,
-                    avatar: avatarUrl && avatarUrl.startsWith('http') ? (
-                        // If it's a URL, we can't easily put it in the avatar field which expects a string/node
-                        // For this app, we'll store the URL. Navbar handles it.
-                         avatarUrl 
-                    ) : fullName.charAt(0).toUpperCase()
-                }
-            });
+          if (user) {
+              if (isFav) {
+                  await supabase.from('favorites').delete().match({ user_id: user.id, listing_id: listingId });
+              } else {
+                  await supabase.from('favorites').insert({ user_id: user.id, listing_id: listingId });
+              }
+          }
+      },
 
-        } catch (err: any) {
-            console.error('Error updating profile:', err);
-            set({ error: err.message });
-            throw err;
-        } finally {
-            set({ isLoading: false });
-        }
+      fetchReviews: async (userId) => {
+          const { data } = await supabase
+            .from('reviews')
+            .select(`*, reviewer:users!reviewer_id(full_name, avatar_url)`)
+            .eq('reviewee_id', userId)
+            .order('created_at', { ascending: false });
+            
+          if(data) {
+              const mapped: Review[] = data.map((r: any) => ({
+                  id: r.id,
+                  reviewerId: r.reviewer_id,
+                  reviewerName: r.reviewer?.full_name || 'Anonymous',
+                  reviewerAvatar: r.reviewer?.avatar_url,
+                  rating: r.rating,
+                  comment: r.comment,
+                  createdAt: r.created_at
+              }));
+              set({ reviews: mapped });
+          }
+      },
+
+      addReview: async (revieweeId, rating, comment) => {
+          const { user } = get();
+          if(!user) return;
+          const { error } = await supabase.from('reviews').insert({
+              reviewer_id: user.id,
+              reviewee_id: revieweeId,
+              rating,
+              comment
+          });
+          if(error) throw error;
+          await get().fetchReviews(revieweeId);
       },
 
       // --- CHAT LOGIC ---
-
       fetchConversations: async () => {
         const { user } = get();
         if (!user) return;
-
         try {
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('conversations')
-                .select(`
-                    *,
-                    listings ( title, images, price ),
-                    buyer:users!buyer_id ( id, full_name, avatar_url, verification_level ),
-                    seller:users!seller_id ( id, full_name, avatar_url, verification_level )
-                `)
+                .select(`*, listings(title, images, price), buyer:users!buyer_id(id, full_name, avatar_url), seller:users!seller_id(id, full_name, avatar_url)`)
                 .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
                 .order('updated_at', { ascending: false });
-
-            if (error) throw error;
-
-            const mappedConversations: Conversation[] = (data || []).map((c: any) => {
-                const isBuyer = c.buyer_id === user.id;
-                // Handle cases where users/listings might be deleted
-                const otherUserData = isBuyer ? c.seller : c.buyer;
                 
-                return {
-                    id: c.id,
-                    listing_id: c.listing_id,
-                    buyer_id: c.buyer_id,
-                    seller_id: c.seller_id,
-                    created_at: c.created_at,
-                    updated_at: c.updated_at,
-                    listing: {
-                        title: c.listings?.title || 'Odstránený inzerát',
-                        images: c.listings?.images || [],
-                        price: c.listings?.price || 0
-                    },
-                    otherUser: {
-                        id: otherUserData?.id || 'deleted',
-                        full_name: otherUserData?.full_name || 'Odstránený používateľ',
-                        avatar_url: otherUserData?.avatar_url,
-                        verification_level: otherUserData?.verification_level || VerificationLevel.NONE
-                    },
-                    lastMessage: ''
-                };
-            });
-
-            set({ conversations: mappedConversations });
-        } catch (err) {
-            console.error('Error fetching conversations:', err);
-        }
+            const mapped = (data || []).map((c: any) => ({
+                id: c.id,
+                listing_id: c.listing_id,
+                buyer_id: c.buyer_id,
+                seller_id: c.seller_id,
+                created_at: c.created_at,
+                updated_at: c.updated_at,
+                listing: { title: c.listings?.title, images: c.listings?.images || [], price: c.listings?.price },
+                otherUser: c.buyer_id === user.id ? c.seller : c.buyer,
+                lastMessage: ''
+            }));
+            set({ conversations: mapped });
+        } catch (err) { console.error(err); }
       },
 
-      startConversation: async (listingId: string, sellerId: string) => {
+      startConversation: async (listingId, sellerId) => {
         const { user } = get();
         if (!user) throw new Error("Not logged in");
-
-        try {
-            const { data: existing } = await supabase
-                .from('conversations')
-                .select('id')
-                .eq('listing_id', listingId)
-                .eq('buyer_id', user.id)
-                .eq('seller_id', sellerId)
-                .single();
-
-            if (existing) {
-                set({ activeConversationId: existing.id });
-                return existing.id;
-            }
-
-            const { data: newConv, error } = await supabase
-                .from('conversations')
-                .insert({
-                    listing_id: listingId,
-                    buyer_id: user.id,
-                    seller_id: sellerId
-                })
-                .select('id')
-                .single();
-
-            if (error) throw error;
-            
-            await get().fetchConversations();
-            set({ activeConversationId: newConv.id });
-            return newConv.id;
-        } catch (err: any) {
-            console.error('Error starting conversation:', err);
-            throw err;
+        const { data: existing } = await supabase.from('conversations').select('id').eq('listing_id', listingId).eq('buyer_id', user.id).eq('seller_id', sellerId).single();
+        if (existing) {
+            set({ activeConversationId: existing.id });
+            return existing.id;
         }
+        const { data: newConv } = await supabase.from('conversations').insert({ listing_id: listingId, buyer_id: user.id, seller_id: sellerId }).select('id').single();
+        await get().fetchConversations();
+        set({ activeConversationId: newConv.id });
+        return newConv.id;
       },
 
-      setActiveConversation: (id) => {
-          // Clear messages immediately to avoid showing old chat content
-          set({ activeConversationId: id, messages: [] });
-      },
+      setActiveConversation: (id) => set({ activeConversationId: id, messages: [] }),
 
-      fetchMessages: async (conversationId: string) => {
+      fetchMessages: async (conversationId) => {
           set({ isChatLoading: true });
           const { user } = get();
-          try {
-              const { data, error } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('conversation_id', conversationId)
-                .order('created_at', { ascending: true });
-            
-              if (error) throw error;
-              set({ messages: data as Message[] });
-              
-              // Mark as read if user is logged in
-              if (user) {
-                  await supabase
-                    .from('messages')
-                    .update({ is_read: true })
-                    .eq('conversation_id', conversationId)
-                    .neq('sender_id', user.id) // Only mark incoming messages
-                    .eq('is_read', false);
-                    
-                   // Refresh global unread count
-                   get().fetchUnreadCount(); 
-              }
-
-              get().subscribeToMessages();
-          } catch (err) {
-              console.error('Error fetching messages:', err);
-          } finally {
-              set({ isChatLoading: false });
+          const { data } = await supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
+          set({ messages: data as Message[], isChatLoading: false });
+          if(user) {
+              await supabase.from('messages').update({ is_read: true }).eq('conversation_id', conversationId).neq('sender_id', user.id).eq('is_read', false);
+              get().fetchUnreadCount();
           }
+          get().subscribeToMessages();
       },
 
       fetchUnreadCount: async () => {
           const { user } = get();
-          if (!user) return;
-          try {
-             // We need to find messages where receiver is me. 
-             // Since we don't have receiver_id, we check conversations where I am a participant
-             // But simpler query: messages where sender_id is NOT me and is_read is false,
-             // JOIN conversations... this is complex via client.
-             // Simplified: Get count of messages in my conversations not sent by me.
-             // Best effort for this schema:
-             
-             // 1. Get my conversation IDs
-             const { data: convs } = await supabase
-                 .from('conversations')
-                 .select('id')
-                 .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`);
-             
-             if (!convs || convs.length === 0) {
-                 set({ unreadMessagesCount: 0 });
-                 return;
-             }
-             
-             const convIds = convs.map(c => c.id);
-             
-             const { count } = await supabase
-                 .from('messages')
-                 .select('*', { count: 'exact', head: true })
-                 .in('conversation_id', convIds)
-                 .neq('sender_id', user.id)
-                 .eq('is_read', false);
-                 
-             set({ unreadMessagesCount: count || 0 });
-
-          } catch (e) {
-              console.error(e);
-          }
+          if(!user) return;
+          // Simplified unread count
+          const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).neq('sender_id', user.id).eq('is_read', false);
+          set({ unreadMessagesCount: count || 0 });
       },
 
-      sendMessage: async (content: string) => {
+      sendMessage: async (content) => {
           const { user, activeConversationId } = get();
           if (!user || !activeConversationId) return;
-
-          try {
-              const { error } = await supabase
-                .from('messages')
-                .insert({
-                    conversation_id: activeConversationId,
-                    sender_id: user.id,
-                    content: content
-                });
-
-              if (error) throw error;
-              
-              await supabase
-                .from('conversations')
-                .update({ updated_at: new Date().toISOString() })
-                .eq('id', activeConversationId);
-                
-              // Refresh sidebar to sort by newest
-              get().fetchConversations();
-
-          } catch (err) {
-              console.error('Error sending message:', err);
-          }
+          await supabase.from('messages').insert({ conversation_id: activeConversationId, sender_id: user.id, content });
+          await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConversationId);
+          get().fetchConversations();
       },
 
       subscribeToMessages: () => {
           const { activeConversationId, user } = get();
           if (!activeConversationId) return;
-
-          if (messageSubscription) {
-              supabase.removeChannel(messageSubscription);
-          }
-
-          messageSubscription = supabase
-            .channel('chat-room')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'messages',
-                    filter: `conversation_id=eq.${activeConversationId}`
-                },
-                (payload) => {
-                    const newMessage = payload.new as Message;
-                    set((state) => ({
-                        messages: [...state.messages, newMessage]
-                    }));
-                    
-                    // If the message is incoming (not from me), clear unread immediately as we are viewing it
-                    if (user && newMessage.sender_id !== user.id) {
-                         supabase
-                            .from('messages')
-                            .update({ is_read: true })
-                            .eq('id', newMessage.id)
-                            .then(() => get().fetchUnreadCount());
-                    }
-
-                    // Refresh sidebar
-                    get().fetchConversations();
-                }
-            )
-            .subscribe();
+          if (messageSubscription) supabase.removeChannel(messageSubscription);
+          messageSubscription = supabase.channel('chat-room').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeConversationId}` }, (payload) => {
+              const newMessage = payload.new as Message;
+              set((state) => ({ messages: [...state.messages, newMessage] }));
+              if (user && newMessage.sender_id !== user.id) {
+                   supabase.from('messages').update({ is_read: true }).eq('id', newMessage.id).then(() => get().fetchUnreadCount());
+              }
+              get().fetchConversations();
+          }).subscribe();
       },
 
-      unsubscribeFromMessages: () => {
-          if (messageSubscription) {
-              supabase.removeChannel(messageSubscription);
-              messageSubscription = null;
-          }
-      },
+      unsubscribeFromMessages: () => { if (messageSubscription) { supabase.removeChannel(messageSubscription); messageSubscription = null; } },
 
-      toggleFavorite: (id) => set((state) => {
-        const isFavorite = state.favorites.includes(id);
-        return {
-          favorites: isFavorite 
-            ? state.favorites.filter(favId => favId !== id)
-            : [...state.favorites, id]
-        };
-      }),
-
-      // --- AUTHENTICATION ---
+      // --- AUTH ---
       checkSession: async () => {
         set({ isAuthLoading: true });
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
-              const { data: profile } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
+              const { data: profile } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+              
+              // Calculate stats for logged in user
+              const { data: reviews } = await supabase.from('reviews').select('rating').eq('reviewee_id', session.user.id);
+              const avg = reviews?.length ? reviews.reduce((a: any, b: any) => a + b.rating, 0) / reviews.length : 0;
 
               set({ 
                 isLoggedIn: true, 
                 user: { 
                   id: session.user.id, 
                   email: session.user.email,
-                  // Use metadata or email prefix if profile doesn't exist yet
-                  name: profile?.full_name || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User', 
+                  name: profile?.full_name || 'User', 
                   type: 'buyer', 
-                  avatar: profile?.avatar_url || (profile?.full_name || 'U').charAt(0).toUpperCase()
+                  avatar: profile?.avatar_url,
+                  verificationLevel: profile?.verification_level as VerificationLevel,
+                  rating: avg,
+                  reviewsCount: reviews?.length || 0
                 } 
               });
-              
-              // Init fetch unread
+              get().fetchFavorites();
               get().fetchUnreadCount();
-
             } else {
               set({ isLoggedIn: false, user: null });
             }
-        } catch (error) {
-            console.error('Session check failed:', error);
-            set({ isLoggedIn: false, user: null });
-        } finally {
-            set({ isAuthLoading: false });
-        }
+        } catch { set({ isLoggedIn: false, user: null }); } finally { set({ isAuthLoading: false }); }
       },
 
       login: async (email, password) => {
         const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-        if (!error && data.user) {
-           await get().checkSession();
-           set({ isAuthModalOpen: false });
-        }
+        if (!error && data.user) { await get().checkSession(); set({ isAuthModalOpen: false }); }
         return { error };
       },
 
       register: async (email, password, fullName) => {
-        const { data, error } = await supabase.auth.signUp({ 
-            email, 
-            password,
-            options: {
-                data: { full_name: fullName }
-            }
-        });
-        if (error) return { error };
-
-        if (data.user) {
-          // Attempt to create profile, but don't block if it fails (can happen via triggers)
-          const { error: profileError } = await supabase
-            .from('users')
-            .insert({
-              id: data.user.id,
-              email: email,
-              full_name: fullName,
-              avatar_url: fullName.charAt(0).toUpperCase()
-            });
-          
-          if (profileError && profileError.code !== '23505') { // Ignore duplicate key error
-              console.error("Profile creation failed", profileError);
-          }
-          
-          await get().checkSession();
-          set({ isAuthModalOpen: false });
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+        if (!error && data.user) {
+            await supabase.from('users').insert({ id: data.user.id, email, full_name: fullName, avatar_url: fullName.charAt(0).toUpperCase() });
+            await get().checkSession(); set({ isAuthModalOpen: false });
         }
-        return { error: null };
+        return { error };
       },
 
-      logout: async () => {
-        await supabase.auth.signOut();
-        set({ isLoggedIn: false, user: null });
-      },
-      
+      logout: async () => { await supabase.auth.signOut(); set({ isLoggedIn: false, user: null, favorites: [] }); },
       openAuthModal: () => set({ isAuthModalOpen: true }),
       closeAuthModal: () => set({ isAuthModalOpen: false }),
       markMessagesRead: () => set({ unreadMessagesCount: 0 }),
     }),
     {
       name: 'premiov-storage',
-      partialize: (state) => ({ 
-        favorites: state.favorites, 
-        language: state.language,
-        activeConversationId: state.activeConversationId
-      }), 
+      partialize: (state) => ({ favorites: state.favorites, language: state.language }), 
     }
   )
 );

@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Listing, VerificationLevel } from '../types';
-import { Heart, MapPin, ShieldCheck, BadgeCheck } from 'lucide-react';
+import { Heart, MapPin, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
@@ -51,7 +52,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
           
           {/* Favorite Button - Floating Action */}
           <button 
-            className={`absolute top-2 right-2 p-1.5 rounded-lg transition-all ${
+            className={`absolute top-2 right-2 p-1.5 rounded-lg transition-all z-10 ${
               isFavorite 
                 ? 'bg-white text-rose-500 shadow-sm border border-rose-100' 
                 : 'bg-black/30 text-white hover:bg-white hover:text-rose-500 backdrop-blur-sm'

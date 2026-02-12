@@ -15,7 +15,8 @@ export const TRANSLATIONS = {
       check: "Skontrolovať",
       publish: "Zverejniť",
       yes: "Áno",
-      no: "Nie"
+      no: "Nie",
+      submit: "Odoslať"
     },
     nav: {
       searchPlaceholder: "Hľadať (napr. Sky Park, Rolex...)",
@@ -151,9 +152,10 @@ export const TRANSLATIONS = {
       editProfile: "Upraviť profil",
       logout: "Odhlásiť sa",
       tabs: {
-        listings: "Moje inzeráty",
+        listings: "Inzeráty",
         favorites: "Obľúbené",
-        settings: "Nastavenia"
+        settings: "Nastavenia",
+        reviews: "Recenzie"
       },
       emptyListings: "Zatiaľ nemáte žiadne aktívne inzeráty.",
       addFirst: "Pridať prvý inzerát",
@@ -163,7 +165,15 @@ export const TRANSLATIONS = {
       emailNotifDesc: "Dostávať správy o nových ponukách",
       editPageTitle: "Upraviť profil",
       changePhoto: "Kliknite pre zmenu fotky",
-      fullName: "Celé meno"
+      fullName: "Celé meno",
+      reviews: {
+        title: "Recenzie",
+        writeReview: "Napísať recenziu",
+        noReviews: "Zatiaľ žiadne recenzie.",
+        yourRating: "Vaše hodnotenie",
+        commentPlaceholder: "Napíšte svoju skúsenosť s predajcom...",
+        thankYou: "Ďakujeme za hodnotenie!"
+      }
     },
     chat: {
       title: "Správy",
@@ -227,7 +237,8 @@ export const TRANSLATIONS = {
       check: "Check",
       publish: "Publish",
       yes: "Yes",
-      no: "No"
+      no: "No",
+      submit: "Submit"
     },
     nav: {
       searchPlaceholder: "Search (e.g. Sky Park, Rolex...)",
@@ -363,9 +374,10 @@ export const TRANSLATIONS = {
       editProfile: "Edit Profile",
       logout: "Log Out",
       tabs: {
-        listings: "My Listings",
+        listings: "Listings",
         favorites: "Favorites",
-        settings: "Settings"
+        settings: "Settings",
+        reviews: "Reviews"
       },
       emptyListings: "You don't have any active listings yet.",
       addFirst: "Add First Listing",
@@ -375,7 +387,15 @@ export const TRANSLATIONS = {
       emailNotifDesc: "Receive messages about new offers",
       editPageTitle: "Edit Profile",
       changePhoto: "Click to change photo",
-      fullName: "Full Name"
+      fullName: "Full Name",
+      reviews: {
+        title: "Reviews",
+        writeReview: "Write Review",
+        noReviews: "No reviews yet.",
+        yourRating: "Your Rating",
+        commentPlaceholder: "Describe your experience with the seller...",
+        thankYou: "Thank you for your review!"
+      }
     },
     chat: {
       title: "Messages",

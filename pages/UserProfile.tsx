@@ -1,72 +1,108 @@
+
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAppStore } from '../store/useStore';
-import { BadgeCheck, LayoutGrid, Heart, Settings, ShieldCheck, Bell, LogOut, Trash2, Eye, EyeOff, Loader2, Pencil } from 'lucide-react';
+import { BadgeCheck, LayoutGrid, Heart, Settings, ShieldCheck, Bell, LogOut, Trash2, Eye, EyeOff, Loader2, Pencil, Star, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ListingCard from '../components/ListingCard';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { TRANSLATIONS } from '../translations';
 
-type Tab = 'listings' | 'favorites' | 'settings';
+type Tab = 'listings' | 'favorites' | 'settings' | 'reviews';
 
 const UserProfile: React.FC = () => {
-  const { user, userListings, listings, logout, favorites, deleteListing, toggleListingStatus, fetchUserListings, language } = useAppStore();
+  const { id } = useParams<{ id: string }>(); // If id present = Public View
+  const { user, userListings, listings, logout, favorites, deleteListing, toggleListingStatus, fetchUserListings, fetchUserProfile, viewedProfile, reviews, fetchReviews, addReview, isLoggedIn, openAuthModal, language } = useAppStore();
   const t = TRANSLATIONS[language];
+  
   const [activeTab, setActiveTab] = useState<Tab>('listings');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  
   const navigate = useNavigate();
 
-  // Fetch user listings on mount to see all items (including inactive)
-  useEffect(() => {
-    if (user) {
-      fetchUserListings();
-    }
-  }, [user, fetchUserListings]);
+  // Determine which profile to show
+  const isOwnProfile = !id || (user && user.id === id);
+  const profileId = id || user?.id;
 
-  // If not logged in
-  if (!user) {
-    return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
-            <Navbar />
-            <div className="flex-grow flex items-center justify-center">
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold text-slate-900 mb-4">{t.profile.accessDenied}</h2>
-                    <p className="text-slate-500 mb-6">{t.profile.loginRequired}</p>
-                    <button onClick={() => navigate('/')} className="text-indigo-600 font-bold hover:underline">{t.profile.backHome}</button>
+  useEffect(() => {
+    if (profileId) {
+        if (isOwnProfile) {
+            // My Dashboard Mode
+            fetchUserListings(); 
+            fetchReviews(profileId);
+        } else {
+            // Public View Mode
+            fetchUserProfile(profileId);
+            fetchUserListings(profileId); // Fetch listings for this specific user
+            fetchReviews(profileId);
+        }
+    }
+  }, [profileId, isOwnProfile, fetchUserListings, fetchUserProfile, fetchReviews]);
+
+  if (!profileId) {
+     return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
+  }
+  
+  // Decide which data object to use
+  const profileData = isOwnProfile ? user : viewedProfile;
+
+  // Access Denied / Not Found
+  if (!profileData) {
+     if (isOwnProfile && !isLoggedIn) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex flex-col">
+                <Navbar />
+                <div className="flex-grow flex items-center justify-center">
+                    <div className="text-center">
+                        <h2 className="text-2xl font-bold text-slate-900 mb-4">{t.profile.accessDenied}</h2>
+                        <p className="text-slate-500 mb-6">{t.profile.loginRequired}</p>
+                        <button onClick={() => navigate('/')} className="text-indigo-600 font-bold hover:underline">{t.profile.backHome}</button>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+     }
+     return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
   }
 
-  // Use userListings (private full list) instead of public listings
   const myListings = userListings;
-  
-  // Filter favorites from public listings (to ensure they are active/valid)
   const favoriteListings = listings.filter(l => favorites.includes(l.id));
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  // --- Handlers ---
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!isLoggedIn) return openAuthModal();
+      if (!profileId) return;
+      
+      try {
+          await addReview(profileId, rating, comment);
+          setIsReviewModalOpen(false);
+          setComment('');
+      } catch (e) {
+          alert(t.common.error);
+      }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, listId: string) => {
     e.preventDefault();
     if (window.confirm(t.listing.deleteConfirm)) {
-        setProcessingId(id);
-        await deleteListing(id);
+        setProcessingId(listId);
+        await deleteListing(listId);
         setProcessingId(null);
     }
   };
 
-  const handleToggleStatus = async (e: React.MouseEvent, id: string, currentStatus: boolean | undefined) => {
+  const handleToggleStatus = async (e: React.MouseEvent, listId: string, currentStatus: boolean | undefined) => {
       e.preventDefault();
-      setProcessingId(id);
-      // If undefined, assume true (active) and toggle to false
+      setProcessingId(listId);
       const newStatus = currentStatus === false ? true : false;
-      await toggleListingStatus(id, newStatus);
+      await toggleListingStatus(listId, newStatus);
       setProcessingId(null);
-  };
-
-  const handleEdit = (e: React.MouseEvent, id: string) => {
-      e.preventDefault();
-      navigate(`/edit/${id}`);
   };
 
   return (
@@ -84,25 +120,29 @@ const UserProfile: React.FC = () => {
                     {/* Avatar */}
                     <div className="relative">
                         <div className="w-24 h-24 md:w-32 md:h-32 bg-indigo-600 text-white rounded-full flex items-center justify-center text-4xl font-bold shadow-xl border-4 border-white overflow-hidden">
-                             {user.avatar && user.avatar.length > 5 ? (
-                                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                             {profileData.avatar && profileData.avatar.length > 5 ? (
+                                <img src={profileData.avatar} alt={profileData.name} className="w-full h-full object-cover" />
                              ) : (
-                                user.avatar
+                                (profileData.name || 'U').charAt(0)
                              )}
                         </div>
-                        <div className="absolute bottom-1 right-1 bg-emerald-500 text-white p-2 rounded-full border-4 border-white shadow-sm" title="BankID Overený">
-                            <BadgeCheck size={20} />
-                        </div>
+                        {profileData.verificationLevel === 'BANK_ID' && (
+                            <div className="absolute bottom-1 right-1 bg-emerald-500 text-white p-2 rounded-full border-4 border-white shadow-sm">
+                                <BadgeCheck size={20} />
+                            </div>
+                        )}
                     </div>
 
                     {/* Info */}
                     <div className="text-center md:text-left flex-1">
                         <div className="flex flex-col md:flex-row items-center md:items-end gap-3 mb-2">
-                            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{user.name}</h1>
-                            <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full border border-indigo-100 mb-1.5 flex items-center gap-1">
-                                <ShieldCheck size={12} />
-                                {t.listing.verifiedBank}
-                            </span>
+                            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{profileData.name}</h1>
+                            {profileData.verificationLevel === 'BANK_ID' && (
+                                <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full border border-indigo-100 mb-1.5 flex items-center gap-1">
+                                    <ShieldCheck size={12} />
+                                    {t.listing.verifiedBank}
+                                </span>
+                            )}
                         </div>
                         <p className="text-slate-500 mb-6 font-medium">{t.profile.memberSince} Októbra 2023</p>
                         
@@ -112,48 +152,59 @@ const UserProfile: React.FC = () => {
                                 <span className="text-xs text-slate-400 uppercase tracking-wide font-bold">{t.profile.listings}</span>
                             </div>
                              <div className="bg-slate-50 px-5 py-3 rounded-xl border border-slate-100">
-                                <span className="block text-xl font-bold text-slate-900">4.9</span>
-                                <span className="text-xs text-slate-400 uppercase tracking-wide font-bold">{t.profile.rating}</span>
+                                <div className="flex items-center gap-1 justify-center md:justify-start">
+                                    <span className="block text-xl font-bold text-slate-900">{profileData.rating?.toFixed(1) || '0.0'}</span>
+                                    <Star size={16} className="text-amber-400 fill-amber-400 mb-0.5" />
+                                </div>
+                                <span className="text-xs text-slate-400 uppercase tracking-wide font-bold">{reviews.length} {t.profile.tabs.reviews}</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Actions */}
                     <div className="flex flex-col gap-3 min-w-[160px]">
-                        <button onClick={() => navigate('/settings')} className="w-full border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
-                            <Settings size={18} /> {t.profile.editProfile}
-                        </button>
-                        <button onClick={() => { logout(); navigate('/'); }} className="w-full bg-rose-50 text-rose-600 font-bold py-3 rounded-xl hover:bg-rose-100 transition-colors flex items-center justify-center gap-2">
-                            <LogOut size={18} /> {t.profile.logout}
-                        </button>
+                        {isOwnProfile ? (
+                            <>
+                                <button onClick={() => navigate('/settings')} className="w-full border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                                    <Settings size={18} /> {t.profile.editProfile}
+                                </button>
+                                <button onClick={() => { logout(); navigate('/'); }} className="w-full bg-rose-50 text-rose-600 font-bold py-3 rounded-xl hover:bg-rose-100 transition-colors flex items-center justify-center gap-2">
+                                    <LogOut size={18} /> {t.profile.logout}
+                                </button>
+                            </>
+                        ) : (
+                             <button onClick={() => setIsReviewModalOpen(true)} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
+                                 <Star size={18} /> {t.profile.reviews.writeReview}
+                             </button>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Tabs Navigation */}
-            <div className="flex justify-center md:justify-start gap-8 mb-8 border-b border-slate-200 px-4">
-                {[
-                    { id: 'listings', label: t.profile.tabs.listings, icon: <LayoutGrid size={18} /> },
-                    { id: 'favorites', label: t.profile.tabs.favorites, icon: <Heart size={18} /> },
-                    { id: 'settings', label: t.profile.tabs.settings, icon: <Settings size={18} /> },
-                ].map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id as Tab)}
-                        className={`pb-4 px-2 flex items-center gap-2 font-bold text-sm transition-all relative ${
-                            activeTab === tab.id ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'
-                        }`}
-                    >
-                        {tab.icon}
-                        {tab.label}
-                        {activeTab === tab.id && (
-                            <motion.div 
-                                layoutId="activeTab"
-                                className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" 
-                            />
-                        )}
-                    </button>
-                ))}
+            <div className="flex justify-center md:justify-start gap-8 mb-8 border-b border-slate-200 px-4 overflow-x-auto">
+                <button onClick={() => setActiveTab('listings')} className={`pb-4 px-2 flex items-center gap-2 font-bold text-sm transition-all relative ${activeTab === 'listings' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
+                    <LayoutGrid size={18} /> {t.profile.tabs.listings}
+                    {activeTab === 'listings' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />}
+                </button>
+                
+                <button onClick={() => setActiveTab('reviews')} className={`pb-4 px-2 flex items-center gap-2 font-bold text-sm transition-all relative ${activeTab === 'reviews' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
+                    <Star size={18} /> {t.profile.tabs.reviews}
+                    {activeTab === 'reviews' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />}
+                </button>
+
+                {isOwnProfile && (
+                    <>
+                        <button onClick={() => setActiveTab('favorites')} className={`pb-4 px-2 flex items-center gap-2 font-bold text-sm transition-all relative ${activeTab === 'favorites' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
+                            <Heart size={18} /> {t.profile.tabs.favorites}
+                            {activeTab === 'favorites' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />}
+                        </button>
+                        <button onClick={() => setActiveTab('settings')} className={`pb-4 px-2 flex items-center gap-2 font-bold text-sm transition-all relative ${activeTab === 'settings' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
+                            <Settings size={18} /> {t.profile.tabs.settings}
+                            {activeTab === 'settings' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />}
+                        </button>
+                    </>
+                )}
             </div>
 
             {/* Tab Content */}
@@ -176,37 +227,13 @@ const UserProfile: React.FC = () => {
                                                 <ListingCard listing={listing} />
                                             </div>
                                             
-                                            {/* Status Badge Overlays */}
-                                            {listing.isActive === false && (
-                                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900/80 text-white px-4 py-2 rounded-xl font-bold backdrop-blur-sm z-10 pointer-events-none">
-                                                    {t.listing.sold}
+                                            {isOwnProfile && (
+                                                <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                                    <button onClick={(e) => {e.preventDefault(); navigate(`/edit/${listing.id}`)}} className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200"><Pencil size={16} /></button>
+                                                    <button onClick={(e) => handleToggleStatus(e, listing.id, listing.isActive)} className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200">{processingId === listing.id ? <Loader2 className="animate-spin" size={16} /> : (listing.isActive === false ? <Eye size={16} /> : <EyeOff size={16} />)}</button>
+                                                    <button onClick={(e) => handleDelete(e, listing.id)} className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-red-50 hover:text-red-600 border border-slate-200">{processingId === listing.id ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} /></button>
                                                 </div>
                                             )}
-
-                                            {/* Action Buttons Overlay */}
-                                            <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                                <button 
-                                                    onClick={(e) => handleEdit(e, listing.id)}
-                                                    className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-slate-200"
-                                                    title={t.common.edit}
-                                                >
-                                                    <Pencil size={16} />
-                                                </button>
-                                                <button 
-                                                    onClick={(e) => handleToggleStatus(e, listing.id, listing.isActive)}
-                                                    className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-slate-200"
-                                                    title={listing.isActive === false ? t.listing.activate : t.listing.sold}
-                                                >
-                                                    {processingId === listing.id ? <Loader2 className="animate-spin" size={16} /> : (listing.isActive === false ? <Eye size={16} /> : <EyeOff size={16} />)}
-                                                </button>
-                                                <button 
-                                                    onClick={(e) => handleDelete(e, listing.id)}
-                                                    className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-red-50 hover:text-red-600 transition-all border border-slate-200"
-                                                    title={t.common.delete}
-                                                >
-                                                    {processingId === listing.id ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
-                                                </button>
-                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -216,13 +243,46 @@ const UserProfile: React.FC = () => {
                                         <LayoutGrid size={32} />
                                     </div>
                                     <p className="text-slate-500 font-medium mb-4">{t.profile.emptyListings}</p>
-                                    <button onClick={() => navigate('/create')} className="text-indigo-600 font-bold hover:underline">{t.profile.addFirst}</button>
+                                    {isOwnProfile && <button onClick={() => navigate('/create')} className="text-indigo-600 font-bold hover:underline">{t.profile.addFirst}</button>}
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {activeTab === 'favorites' && (
+                    {activeTab === 'reviews' && (
+                        <div className="max-w-3xl">
+                             {reviews.length > 0 ? (
+                                <div className="space-y-4">
+                                    {reviews.map(review => (
+                                        <div key={review.id} className="bg-white p-6 rounded-2xl border border-slate-100 flex gap-4">
+                                            <div className="flex-shrink-0">
+                                                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center overflow-hidden">
+                                                    {review.reviewerAvatar ? <img src={review.reviewerAvatar} className="w-full h-full object-cover" /> : <span className="font-bold text-slate-400">{review.reviewerName.charAt(0)}</span>}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h4 className="font-bold text-slate-900">{review.reviewerName}</h4>
+                                                    <span className="text-xs text-slate-400">• {new Date(review.createdAt).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="flex gap-0.5 text-amber-400 mb-2">
+                                                    {[...Array(5)].map((_, i) => <Star key={i} size={14} fill={i < review.rating ? "currentColor" : "none"} className={i < review.rating ? "text-amber-400" : "text-slate-200"} />)}
+                                                </div>
+                                                <p className="text-slate-600 text-sm leading-relaxed">{review.comment}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                             ) : (
+                                <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200 text-slate-400">
+                                    <Star size={32} className="mx-auto mb-3 opacity-30" />
+                                    <p>{t.profile.reviews.noReviews}</p>
+                                </div>
+                             )}
+                        </div>
+                    )}
+
+                    {isOwnProfile && activeTab === 'favorites' && (
                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             {favoriteListings.length > 0 ? (
                                 favoriteListings.map(listing => (
@@ -236,13 +296,12 @@ const UserProfile: React.FC = () => {
                         </div>
                     )}
 
-                    {activeTab === 'settings' && (
+                    {isOwnProfile && activeTab === 'settings' && (
                         <div className="max-w-2xl bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
                             <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                                 <Bell size={20} className="text-indigo-600" />
                                 {t.profile.notifications}
                             </h3>
-                            
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between py-4 border-b border-slate-50">
                                     <div>
@@ -251,13 +310,44 @@ const UserProfile: React.FC = () => {
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input type="checkbox" className="sr-only peer" defaultChecked />
-                                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:bg-emerald-500 transition-colors after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
                                     </label>
                                 </div>
                             </div>
                         </div>
                     )}
                 </motion.div>
+            </AnimatePresence>
+            
+            {/* Review Modal */}
+            <AnimatePresence>
+                {isReviewModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-2xl w-full max-w-md p-6">
+                            <h2 className="text-xl font-bold mb-4">{t.profile.reviews.writeReview}</h2>
+                            <form onSubmit={handleReviewSubmit}>
+                                <div className="flex justify-center gap-2 mb-6">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button key={star} type="button" onClick={() => setRating(star)} className="p-1 transition-transform hover:scale-110">
+                                            <Star size={32} className={star <= rating ? "text-amber-400 fill-amber-400" : "text-slate-200"} />
+                                        </button>
+                                    ))}
+                                </div>
+                                <textarea 
+                                    className="w-full border border-slate-200 rounded-xl p-4 mb-4 focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-32"
+                                    placeholder={t.profile.reviews.commentPlaceholder}
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                    required
+                                />
+                                <div className="flex gap-3">
+                                    <button type="button" onClick={() => setIsReviewModalOpen(false)} className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50">{t.common.cancel}</button>
+                                    <button type="submit" className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700">{t.common.submit}</button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
             </AnimatePresence>
         </div>
       </main>

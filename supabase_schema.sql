@@ -1,3 +1,4 @@
+
 -- 1. ENUMS
 CREATE TYPE region_enum AS ENUM (
   'Bratislavský', 'Trnavský', 'Trenčiansky', 'Nitriansky', 
@@ -54,7 +55,7 @@ CREATE TABLE public.listings (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Conversations Table (NEW)
+-- Conversations Table
 CREATE TABLE public.conversations (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
@@ -62,11 +63,10 @@ CREATE TABLE public.conversations (
     seller_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    -- Prevent duplicate conversations for the same listing between same parties
     UNIQUE(listing_id, buyer_id)
 );
 
--- Messages Table (NEW)
+-- Messages Table
 CREATE TABLE public.messages (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     conversation_id UUID REFERENCES public.conversations(id) ON DELETE CASCADE NOT NULL,
@@ -76,49 +76,59 @@ CREATE TABLE public.messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Favorites Table (NEW)
+CREATE TABLE public.favorites (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, listing_id)
+);
+
+-- Reviews Table (NEW)
+CREATE TABLE public.reviews (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  reviewer_id UUID REFERENCES public.users(id) ON DELETE SET NULL NOT NULL,
+  reviewee_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  listing_id UUID REFERENCES public.listings(id) ON DELETE SET NULL,
+  rating INTEGER CHECK (rating >= 1 AND rating <= 5) NOT NULL,
+  comment TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- 3. POLICIES (Row Level Security)
 ALTER TABLE public.listings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Public listings are viewable by everyone."
-  ON public.listings FOR SELECT
-  USING (true);
+-- Listings
+CREATE POLICY "Public listings are viewable by everyone." ON public.listings FOR SELECT USING (true);
+CREATE POLICY "Users can insert their own listings." ON public.listings FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own listings" ON public.listings FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own listings" ON public.listings FOR DELETE USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert their own listings."
-  ON public.listings FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+-- Conversations
+CREATE POLICY "Users can view their own conversations" ON public.conversations FOR SELECT USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
+CREATE POLICY "Buyers can start conversations" ON public.conversations FOR INSERT WITH CHECK (auth.uid() = buyer_id);
 
--- Conversations Policies
-CREATE POLICY "Users can view their own conversations"
-ON public.conversations FOR SELECT
-USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
-
-CREATE POLICY "Buyers can start conversations"
-ON public.conversations FOR INSERT
-WITH CHECK (auth.uid() = buyer_id);
-
--- Messages Policies
-CREATE POLICY "Users can view messages in their conversations"
-ON public.messages FOR SELECT
-USING (
-    EXISTS (
-        SELECT 1 FROM public.conversations c
-        WHERE c.id = messages.conversation_id
-        AND (c.buyer_id = auth.uid() OR c.seller_id = auth.uid())
-    )
+-- Messages
+CREATE POLICY "Users can view messages in their conversations" ON public.messages FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.conversations c WHERE c.id = messages.conversation_id AND (c.buyer_id = auth.uid() OR c.seller_id = auth.uid()))
+);
+CREATE POLICY "Users can send messages in their conversations" ON public.messages FOR INSERT WITH CHECK (
+    auth.uid() = sender_id AND EXISTS (SELECT 1 FROM public.conversations c WHERE c.id = conversation_id AND (c.buyer_id = auth.uid() OR c.seller_id = auth.uid()))
 );
 
-CREATE POLICY "Users can send messages in their conversations"
-ON public.messages FOR INSERT
-WITH CHECK (
-    auth.uid() = sender_id AND
-    EXISTS (
-        SELECT 1 FROM public.conversations c
-        WHERE c.id = conversation_id
-        AND (c.buyer_id = auth.uid() OR c.seller_id = auth.uid())
-    )
-);
+-- Favorites Policies
+CREATE POLICY "Users can view their own favorites" ON public.favorites FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own favorites" ON public.favorites FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own favorites" ON public.favorites FOR DELETE USING (auth.uid() = user_id);
+
+-- Reviews Policies
+CREATE POLICY "Reviews are viewable by everyone" ON public.reviews FOR SELECT USING (true);
+CREATE POLICY "Authenticated users can insert reviews" ON public.reviews FOR INSERT WITH CHECK (auth.uid() = reviewer_id);
 
 -- Enable Realtime
 BEGIN;
@@ -126,19 +136,7 @@ BEGIN;
   CREATE PUBLICATION supabase_realtime FOR TABLE messages;
 COMMIT;
 
--- 4. STORAGE SETUP (CRITICAL FOR IMAGES)
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('images', 'images', true)
-ON CONFLICT (id) DO NOTHING;
-
-CREATE POLICY "Public Access" 
-ON storage.objects FOR SELECT 
-USING ( bucket_id = 'images' );
-
-CREATE POLICY "Auth Upload" 
-ON storage.objects FOR INSERT 
-WITH CHECK ( 
-  bucket_id = 'images' 
-  AND auth.role() = 'authenticated' 
-  AND (storage.foldername(name))[1] = auth.uid()::text
-);
+-- 4. STORAGE SETUP
+INSERT INTO storage.buckets (id, name, public) VALUES ('images', 'images', true) ON CONFLICT (id) DO NOTHING;
+CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING ( bucket_id = 'images' );
+CREATE POLICY "Auth Upload" ON storage.objects FOR INSERT WITH CHECK ( bucket_id = 'images' AND auth.role() = 'authenticated' AND (storage.foldername(name))[1] = auth.uid()::text );
