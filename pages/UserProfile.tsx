@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAppStore } from '../store/useStore';
-import { BadgeCheck, LayoutGrid, Heart, Settings, ShieldCheck, Bell, LogOut } from 'lucide-react';
+import { BadgeCheck, LayoutGrid, Heart, Settings, ShieldCheck, Bell, LogOut, Trash2, Eye, EyeOff, Loader2, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ListingCard from '../components/ListingCard';
 import { useNavigate } from 'react-router-dom';
@@ -10,50 +10,85 @@ import { useNavigate } from 'react-router-dom';
 type Tab = 'listings' | 'favorites' | 'settings';
 
 const UserProfile: React.FC = () => {
-  const { user, listings, logout, favorites } = useAppStore();
+  const { user, userListings, listings, logout, favorites, deleteListing, toggleListingStatus, fetchUserListings } = useAppStore();
   const [activeTab, setActiveTab] = useState<Tab>('listings');
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // Fetch user listings on mount to see all items (including inactive)
+  useEffect(() => {
+    if (user) {
+      fetchUserListings();
+    }
+  }, [user, fetchUserListings]);
 
   // If not logged in
   if (!user) {
     return (
-        <div className="min-h-screen bg-slovak-light flex flex-col">
+        <div className="min-h-screen bg-slate-50 flex flex-col">
             <Navbar />
             <div className="flex-grow flex items-center justify-center">
                 <div className="text-center">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Prístup zamietnutý</h2>
-                    <p className="text-gray-500 mb-6">Pre zobrazenie profilu sa musíte prihlásiť.</p>
-                    <button onClick={() => navigate('/')} className="text-slovak-blue font-bold hover:underline">Späť domov</button>
+                    <h2 className="text-2xl font-bold text-slate-900 mb-4">Prístup zamietnutý</h2>
+                    <p className="text-slate-500 mb-6">Pre zobrazenie profilu sa musíte prihlásiť.</p>
+                    <button onClick={() => navigate('/')} className="text-indigo-600 font-bold hover:underline">Späť domov</button>
                 </div>
             </div>
         </div>
     );
   }
 
-  // SECURE FILTERING: Use userId comparison, not sellerName
-  const myListings = listings.filter(l => l.userId === user.id);
+  // Use userListings (private full list) instead of public listings
+  const myListings = userListings;
   
-  // Filter favorites
+  // Filter favorites from public listings (to ensure they are active/valid)
   const favoriteListings = listings.filter(l => favorites.includes(l.id));
 
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    if (window.confirm('Naozaj chcete odstrániť tento inzerát? Táto akcia je nevratná.')) {
+        setProcessingId(id);
+        await deleteListing(id);
+        setProcessingId(null);
+    }
+  };
+
+  const handleToggleStatus = async (e: React.MouseEvent, id: string, currentStatus: boolean | undefined) => {
+      e.preventDefault();
+      setProcessingId(id);
+      // If undefined, assume true (active) and toggle to false
+      const newStatus = currentStatus === false ? true : false;
+      await toggleListingStatus(id, newStatus);
+      setProcessingId(null);
+  };
+
+  const handleEdit = (e: React.MouseEvent, id: string) => {
+      e.preventDefault();
+      navigate(`/edit/${id}`);
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-slovak-light font-sans">
+    <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
       <Navbar />
       
       <main className="flex-grow pt-8 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             {/* Header Card */}
-            <div className="bg-white rounded-3xl shadow-soft border border-gray-100 p-8 mb-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-slovak-blue/5 rounded-bl-[100px] -mr-10 -mt-10 pointer-events-none"></div>
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-bl-[100px] -mr-10 -mt-10 pointer-events-none"></div>
                 
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10">
                     {/* Avatar */}
                     <div className="relative">
-                        <div className="w-24 h-24 md:w-32 md:h-32 bg-slovak-blue text-white rounded-full flex items-center justify-center text-4xl font-bold shadow-xl border-4 border-white">
-                            {user.avatar}
+                        <div className="w-24 h-24 md:w-32 md:h-32 bg-indigo-600 text-white rounded-full flex items-center justify-center text-4xl font-bold shadow-xl border-4 border-white overflow-hidden">
+                             {user.avatar && user.avatar.length > 5 ? (
+                                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                             ) : (
+                                user.avatar
+                             )}
                         </div>
-                        <div className="absolute bottom-1 right-1 bg-green-500 text-white p-2 rounded-full border-4 border-white shadow-sm" title="BankID Overený">
+                        <div className="absolute bottom-1 right-1 bg-emerald-500 text-white p-2 rounded-full border-4 border-white shadow-sm" title="BankID Overený">
                             <BadgeCheck size={20} />
                         </div>
                     </div>
@@ -61,32 +96,32 @@ const UserProfile: React.FC = () => {
                     {/* Info */}
                     <div className="text-center md:text-left flex-1">
                         <div className="flex flex-col md:flex-row items-center md:items-end gap-3 mb-2">
-                            <h1 className="text-3xl font-bold text-gray-900">{user.name}</h1>
-                            <span className="bg-blue-50 text-slovak-blue text-xs font-bold px-3 py-1 rounded-full border border-blue-100 mb-1.5 flex items-center gap-1">
+                            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{user.name}</h1>
+                            <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full border border-indigo-100 mb-1.5 flex items-center gap-1">
                                 <ShieldCheck size={12} />
                                 BankID Overený
                             </span>
                         </div>
-                        <p className="text-gray-500 mb-6">Členom od Októbra 2023 • Bratislava</p>
+                        <p className="text-slate-500 mb-6 font-medium">Členom od Októbra 2023 • Bratislava</p>
                         
                         <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                            <div className="bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-                                <span className="block text-xl font-bold text-slovak-blue">{myListings.length}</span>
-                                <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Inzerátov</span>
+                            <div className="bg-slate-50 px-5 py-3 rounded-xl border border-slate-100">
+                                <span className="block text-xl font-bold text-slate-900">{myListings.length}</span>
+                                <span className="text-xs text-slate-400 uppercase tracking-wide font-bold">Inzerátov</span>
                             </div>
-                             <div className="bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-                                <span className="block text-xl font-bold text-slovak-blue">4.9</span>
-                                <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Hodnotenie</span>
+                             <div className="bg-slate-50 px-5 py-3 rounded-xl border border-slate-100">
+                                <span className="block text-xl font-bold text-slate-900">4.9</span>
+                                <span className="text-xs text-slate-400 uppercase tracking-wide font-bold">Hodnotenie</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Actions */}
                     <div className="flex flex-col gap-3 min-w-[160px]">
-                        <button className="w-full border border-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                        <button onClick={() => navigate('/settings')} className="w-full border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
                             <Settings size={18} /> Upraviť profil
                         </button>
-                        <button onClick={() => { logout(); navigate('/'); }} className="w-full bg-red-50 text-red-600 font-semibold py-2.5 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
+                        <button onClick={() => { logout(); navigate('/'); }} className="w-full bg-rose-50 text-rose-600 font-bold py-3 rounded-xl hover:bg-rose-100 transition-colors flex items-center justify-center gap-2">
                             <LogOut size={18} /> Odhlásiť sa
                         </button>
                     </div>
@@ -94,7 +129,7 @@ const UserProfile: React.FC = () => {
             </div>
 
             {/* Tabs Navigation */}
-            <div className="flex justify-center md:justify-start gap-8 mb-8 border-b border-gray-200 px-4">
+            <div className="flex justify-center md:justify-start gap-8 mb-8 border-b border-slate-200 px-4">
                 {[
                     { id: 'listings', label: 'Moje inzeráty', icon: <LayoutGrid size={18} /> },
                     { id: 'favorites', label: 'Obľúbené', icon: <Heart size={18} /> },
@@ -103,8 +138,8 @@ const UserProfile: React.FC = () => {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as Tab)}
-                        className={`pb-4 px-2 flex items-center gap-2 font-medium text-sm transition-all relative ${
-                            activeTab === tab.id ? 'text-slovak-blue' : 'text-gray-400 hover:text-gray-600'
+                        className={`pb-4 px-2 flex items-center gap-2 font-bold text-sm transition-all relative ${
+                            activeTab === tab.id ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'
                         }`}
                     >
                         {tab.icon}
@@ -112,7 +147,7 @@ const UserProfile: React.FC = () => {
                         {activeTab === tab.id && (
                             <motion.div 
                                 layoutId="activeTab"
-                                className="absolute bottom-0 left-0 right-0 h-0.5 bg-slovak-blue rounded-full" 
+                                className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" 
                             />
                         )}
                     </button>
@@ -134,20 +169,52 @@ const UserProfile: React.FC = () => {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {myListings.map(listing => (
                                         <div key={listing.id} className="relative group">
-                                            <ListingCard listing={listing} />
-                                            <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button className="bg-white text-gray-700 px-3 py-1 rounded-full text-xs font-bold shadow-lg hover:bg-gray-100">Upraviť</button>
+                                            {/* Listing Card opacity if inactive */}
+                                            <div className={listing.isActive === false ? 'opacity-60 grayscale' : ''}>
+                                                <ListingCard listing={listing} />
+                                            </div>
+                                            
+                                            {/* Status Badge Overlays */}
+                                            {listing.isActive === false && (
+                                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900/80 text-white px-4 py-2 rounded-xl font-bold backdrop-blur-sm z-10 pointer-events-none">
+                                                    PREDANÉ
+                                                </div>
+                                            )}
+
+                                            {/* Action Buttons Overlay */}
+                                            <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                                <button 
+                                                    onClick={(e) => handleEdit(e, listing.id)}
+                                                    className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-slate-200"
+                                                    title="Upraviť"
+                                                >
+                                                    <Pencil size={16} />
+                                                </button>
+                                                <button 
+                                                    onClick={(e) => handleToggleStatus(e, listing.id, listing.isActive)}
+                                                    className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-slate-200"
+                                                    title={listing.isActive === false ? "Označiť ako aktívne" : "Označiť ako predané"}
+                                                >
+                                                    {processingId === listing.id ? <Loader2 className="animate-spin" size={16} /> : (listing.isActive === false ? <Eye size={16} /> : <EyeOff size={16} />)}
+                                                </button>
+                                                <button 
+                                                    onClick={(e) => handleDelete(e, listing.id)}
+                                                    className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-red-50 hover:text-red-600 transition-all border border-slate-200"
+                                                    title="Odstrániť"
+                                                >
+                                                    {processingId === listing.id ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
+                                                </button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
-                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+                                <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+                                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
                                         <LayoutGrid size={32} />
                                     </div>
-                                    <p className="text-gray-500 font-medium mb-4">Zatiaľ nemáte žiadne aktívne inzeráty.</p>
-                                    <button onClick={() => navigate('/create')} className="text-slovak-blue font-bold hover:underline">Pridať prvý inzerát</button>
+                                    <p className="text-slate-500 font-medium mb-4">Zatiaľ nemáte žiadne aktívne inzeráty.</p>
+                                    <button onClick={() => navigate('/create')} className="text-indigo-600 font-bold hover:underline">Pridať prvý inzerát</button>
                                 </div>
                             )}
                         </div>
@@ -160,7 +227,7 @@ const UserProfile: React.FC = () => {
                                     <ListingCard key={listing.id} listing={listing} />
                                 ))
                             ) : (
-                                <div className="col-span-full text-center py-20 text-gray-400">
+                                <div className="col-span-full text-center py-20 text-slate-400 font-medium">
                                     Zatiaľ nemáte žiadne obľúbené inzeráty.
                                 </div>
                             )}
@@ -168,21 +235,21 @@ const UserProfile: React.FC = () => {
                     )}
 
                     {activeTab === 'settings' && (
-                        <div className="max-w-2xl bg-white rounded-3xl shadow-soft border border-gray-100 p-8">
-                            <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                <Bell size={20} className="text-slovak-blue" />
+                        <div className="max-w-2xl bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
+                            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                <Bell size={20} className="text-indigo-600" />
                                 Notifikácie
                             </h3>
                             
                             <div className="space-y-6">
-                                <div className="flex items-center justify-between py-4 border-b border-gray-50">
+                                <div className="flex items-center justify-between py-4 border-b border-slate-50">
                                     <div>
-                                        <p className="font-bold text-gray-800">Emailové upozornenia</p>
-                                        <p className="text-sm text-gray-400">Dostávať správy o nových ponukách</p>
+                                        <p className="font-bold text-slate-900">Emailové upozornenia</p>
+                                        <p className="text-sm text-slate-400">Dostávať správy o nových ponukách</p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input type="checkbox" className="sr-only peer" defaultChecked />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                                     </label>
                                 </div>
                             </div>

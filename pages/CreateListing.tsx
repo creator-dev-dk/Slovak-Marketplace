@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { Camera, ChevronRight, ShieldCheck, Loader2, X } from 'lucide-react';
+import { Camera, ChevronRight, ShieldCheck, Loader2, X, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
@@ -33,38 +33,37 @@ const CreateListing: React.FC = () => {
     description: '',
     isPremium: false,
     city: '',
-    region: 'Bratislavský' // Default matches DB Enum
+    region: 'Bratislavský'
   });
 
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
 
-  // Clean up object URLs to avoid memory leaks
   useEffect(() => {
       return () => {
           previewUrls.forEach(url => URL.revokeObjectURL(url));
       };
   }, [previewUrls]);
 
-  // Loading state for auth to prevent FOUC (Flash of Unauthenticated Content)
   if (isAuthLoading) {
       return (
-         <div className="min-h-screen bg-slovak-light flex flex-col items-center justify-center">
-             <Loader2 className="animate-spin text-slovak-blue" size={40} />
+         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
+             <Loader2 className="animate-spin text-indigo-600" size={40} />
          </div>
       );
   }
 
-  // Protect route
   if (!user) {
     return (
-       <div className="min-h-screen bg-slovak-light flex flex-col">
+       <div className="min-h-screen bg-slate-50 flex flex-col">
           <Navbar />
           <div className="flex-grow flex items-center justify-center text-center p-4">
-             <div>
-                <h2 className="text-2xl font-bold mb-4">Pre pridanie inzerátu sa musíte prihlásiť</h2>
-                <button onClick={openAuthModal} className="bg-slovak-blue text-white px-6 py-3 rounded-full font-bold">
+             <div className="max-w-md bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                <ShieldCheck size={48} className="mx-auto text-indigo-600 mb-4" />
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">Prihlásenie vyžadované</h2>
+                <p className="text-slate-500 mb-6">Pre pridanie inzerátu sa musíte najprv prihlásiť alebo zaregistrovať.</p>
+                <button onClick={openAuthModal} className="w-full bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors">
                    Prihlásiť sa
                 </button>
              </div>
@@ -75,16 +74,13 @@ const CreateListing: React.FC = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-       const selectedFiles = Array.from(e.target.files);
+       const selectedFiles = Array.from(e.target.files) as File[];
        if (files.length + selectedFiles.length > 3) {
            alert("Maximálne môžete nahrať 3 fotografie.");
            return;
        }
-       
        const newFiles = [...files, ...selectedFiles];
        setFiles(newFiles);
-       
-       // Generate previews
        const newPreviews = selectedFiles.map(file => URL.createObjectURL(file));
        setPreviewUrls([...previewUrls, ...newPreviews]);
     }
@@ -94,9 +90,8 @@ const CreateListing: React.FC = () => {
       const newFiles = [...files];
       newFiles.splice(index, 1);
       setFiles(newFiles);
-
       const newPreviews = [...previewUrls];
-      URL.revokeObjectURL(newPreviews[index]); // Cleanup specific URL
+      URL.revokeObjectURL(newPreviews[index]);
       newPreviews.splice(index, 1);
       setPreviewUrls(newPreviews);
   };
@@ -104,76 +99,61 @@ const CreateListing: React.FC = () => {
   const handleNext = () => setStep(prev => prev + 1);
 
   const handlePublish = async () => {
-      if (files.length === 0) {
-        alert("Prosím nahrajte aspoň jednu fotku.");
-        return;
-      }
-      
-      if (!formData.categoryId) {
-          alert("Prosím vyberte kategóriu.");
-          return;
-      }
+      if (files.length === 0) { alert("Prosím nahrajte aspoň jednu fotku."); return; }
+      if (!formData.categoryId) { alert("Prosím vyberte kategóriu."); return; }
+      if (!formData.title || !formData.price || !formData.city) { alert("Prosím vyplňte všetky povinné polia."); return; }
 
-      if (!formData.title || !formData.price || !formData.city) {
-          alert("Prosím vyplňte všetky povinné polia.");
-          return;
-      }
-
-      // Check price format validity
       const priceVal = parseFloat(formData.price.replace(',', '.'));
-      if (isNaN(priceVal) || priceVal <= 0) {
-          alert("Prosím zadajte platnú cenu.");
-          return;
-      }
+      if (isNaN(priceVal) || priceVal <= 0) { alert("Prosím zadajte platnú cenu."); return; }
 
       try {
         await addListing(formData, files);
         navigate('/');
       } catch (error) {
          console.error(error);
-         alert('Nastala chyba pri vytváraní inzerátu. Skúste to prosím znova.');
+         alert('Nastala chyba pri vytváraní inzerátu.');
       }
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slovak-light font-sans">
+    <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
       <Navbar />
       
       <main className="flex-grow py-12">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           
           {/* Progress Indicator */}
-          <div className="mb-12">
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-sm font-bold ${step >= 1 ? 'text-slovak-blue' : 'text-gray-400'}`}>Fotografie</span>
-              <span className={`text-sm font-bold ${step >= 2 ? 'text-slovak-blue' : 'text-gray-400'}`}>Detaily</span>
-              <span className={`text-sm font-bold ${step >= 3 ? 'text-slovak-blue' : 'text-gray-400'}`}>Verifikácia</span>
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <span className={`text-xs font-bold uppercase tracking-wider ${step >= 1 ? 'text-indigo-600' : 'text-slate-400'}`}>1. Fotografie</span>
+              <span className={`text-xs font-bold uppercase tracking-wider ${step >= 2 ? 'text-indigo-600' : 'text-slate-400'}`}>2. Detaily</span>
+              <span className={`text-xs font-bold uppercase tracking-wider ${step >= 3 ? 'text-indigo-600' : 'text-slate-400'}`}>3. Verifikácia</span>
             </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
               <motion.div 
-                className="h-full bg-slovak-blue"
+                className="h-full bg-indigo-600"
                 initial={{ width: '0%' }}
                 animate={{ width: step === 1 ? '33%' : step === 2 ? '66%' : '100%' }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
               />
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl shadow-soft border border-gray-100 p-8 md:p-12 relative overflow-hidden">
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-12 relative overflow-hidden">
             
             {/* Step 1: Upload */}
             {step === 1 && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Čo chcete predať?</h1>
-                <p className="text-gray-500 mb-8">Nahrajte fotky vášho produktu (Max 3).</p>
+                <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Nahrajte fotografie</h1>
+                <p className="text-slate-500 mb-8">Kvalitné fotky predávajú. Pridajte až 3 zábery vášho produktu.</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     {previewUrls.map((url, index) => (
-                        <div key={index} className="relative aspect-square rounded-2xl overflow-hidden group shadow-md border border-gray-100">
+                        <div key={index} className="relative aspect-square rounded-2xl overflow-hidden group shadow-sm border border-slate-200">
                             <img src={url} className="w-full h-full object-cover" alt={`Preview ${index}`} />
                             <button 
                                 onClick={() => removeFile(index)}
-                                className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full text-red-500 hover:bg-red-50 transition-colors shadow-sm"
+                                className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 transition-colors shadow-sm"
                             >
                                 <X size={16} />
                             </button>
@@ -182,21 +162,21 @@ const CreateListing: React.FC = () => {
                     
                     {files.length < 3 && (
                         <label 
-                            className="aspect-square border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-slovak-blue hover:bg-blue-50/30 transition-all group"
+                            className="aspect-square border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50/10 transition-all group"
                         >
                             <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileChange} />
-                            <div className="w-12 h-12 bg-blue-100 text-slovak-blue rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                            <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center mb-3 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
                                 <Camera size={24} />
                             </div>
-                            <span className="text-xs font-bold text-gray-500">Pridať fotku</span>
+                            <span className="text-xs font-bold text-slate-500 group-hover:text-indigo-600">Vybrať súbory</span>
                         </label>
                     )}
                 </div>
                 
                 {files.length > 0 && (
-                   <div className="mt-8">
-                      <button onClick={handleNext} className="w-full bg-slovak-blue text-white py-4 rounded-xl font-bold hover:bg-slovak-dark transition-all flex items-center justify-center gap-2">
-                        Pokračovať na detaily <ChevronRight size={20} />
+                   <div className="mt-8 pt-6 border-t border-slate-100">
+                      <button onClick={handleNext} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
+                        Pokračovať <ChevronRight size={20} />
                       </button>
                    </div>
                 )}
@@ -206,69 +186,78 @@ const CreateListing: React.FC = () => {
             {/* Step 2: Details Form */}
             {step === 2 && (
                <motion.div initial={{ opacity: 0, x: 0 }} animate={{ opacity: 1, x: 0 }}>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-8">Doplňte informácie</h1>
+                  <h1 className="text-3xl font-bold text-slate-900 mb-8 tracking-tight">Informácie o produkte</h1>
                   
                   <div className="space-y-6">
                      <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Názov inzerátu</label>
-                        <input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-slovak-blue focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium" placeholder="Napr. Audi Q8 S-Line" />
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Názov inzerátu</label>
+                        <input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all font-medium text-slate-900 placeholder:text-slate-400" placeholder="Napr. Audi Q8 S-Line 2023" />
                      </div>
                      
-                     <div className="grid grid-cols-2 gap-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                           <label className="block text-sm font-bold text-gray-700 mb-2">Cena (€)</label>
-                           <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-slovak-blue focus:ring-2 focus:ring-blue-100 outline-none transition-all font-bold text-lg" placeholder="0" />
+                           <label className="block text-sm font-bold text-slate-700 mb-2">Cena (€)</label>
+                           <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all font-bold text-lg text-slate-900" placeholder="0" />
                         </div>
                          <div>
-                           <label className="block text-sm font-bold text-gray-700 mb-2">Kategória</label>
-                           <select 
-                              value={formData.categoryId}
-                              onChange={(e) => setFormData({...formData, categoryId: e.target.value})}
-                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-slovak-blue outline-none bg-white appearance-none"
-                           >
-                              <option value="">Vyberte kategóriu</option>
-                              {categories.map((cat) => (
-                                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                              ))}
-                           </select>
+                           <label className="block text-sm font-bold text-slate-700 mb-2">Kategória</label>
+                           <div className="relative">
+                               <select 
+                                  value={formData.categoryId}
+                                  onChange={(e) => setFormData({...formData, categoryId: e.target.value})}
+                                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none bg-white appearance-none text-slate-900 cursor-pointer"
+                               >
+                                  <option value="">Vyberte kategóriu</option>
+                                  {categories.map((cat) => (
+                                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                  ))}
+                               </select>
+                               <ChevronRight className="absolute right-4 top-3.5 text-slate-400 rotate-90 pointer-events-none" size={16} />
+                           </div>
                         </div>
                      </div>
                      
-                     <div className="grid grid-cols-2 gap-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                             <label className="block text-sm font-bold text-gray-700 mb-2">Kraj</label>
-                             <select 
-                                value={formData.region}
-                                onChange={(e) => setFormData({...formData, region: e.target.value})}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-slovak-blue outline-none bg-white appearance-none"
-                             >
-                                {REGION_OPTIONS.map((region) => (
-                                    <option key={region} value={region}>{region}</option>
-                                ))}
-                             </select>
+                             <label className="block text-sm font-bold text-slate-700 mb-2">Kraj</label>
+                             <div className="relative">
+                                 <select 
+                                    value={formData.region}
+                                    onChange={(e) => setFormData({...formData, region: e.target.value})}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none bg-white appearance-none text-slate-900 cursor-pointer"
+                                 >
+                                    {REGION_OPTIONS.map((region) => (
+                                        <option key={region} value={region}>{region}</option>
+                                    ))}
+                                 </select>
+                                 <ChevronRight className="absolute right-4 top-3.5 text-slate-400 rotate-90 pointer-events-none" size={16} />
+                             </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Mesto</label>
-                            <input type="text" value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-slovak-blue focus:ring-2 focus:ring-blue-100 outline-none transition-all" placeholder="Napr. Petržalka" />
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Mesto</label>
+                            <input type="text" value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-slate-900" placeholder="Napr. Petržalka" />
                         </div>
                      </div>
 
                      <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Popis</label>
-                        <textarea rows={5} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-slovak-blue focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none text-gray-600"></textarea>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Popis</label>
+                        <textarea rows={5} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none text-slate-700 placeholder:text-slate-400" placeholder="Detailný popis stavu, pôvodu a vlastností..."></textarea>
                      </div>
                      
-                     <div className="flex items-center gap-2">
-                        <input type="checkbox" id="premium" checked={formData.isPremium} onChange={(e) => setFormData({...formData, isPremium: e.target.checked})} className="w-5 h-5 text-slovak-blue rounded border-gray-300 focus:ring-slovak-blue" />
-                        <label htmlFor="premium" className="text-gray-700 font-medium select-none">Označiť ako Premium Listing (zvýraznenie)</label>
+                     <div className="bg-indigo-50 p-4 rounded-xl flex items-start gap-3 border border-indigo-100">
+                        <input type="checkbox" id="premium" checked={formData.isPremium} onChange={(e) => setFormData({...formData, isPremium: e.target.checked})} className="mt-1 w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" />
+                        <div>
+                            <label htmlFor="premium" className="text-indigo-900 font-bold select-none cursor-pointer">Premium Listing</label>
+                            <p className="text-xs text-indigo-600/80 mt-0.5">Váš inzerát bude zobrazený na úvodnej stránke a zvýraznený v zozname.</p>
+                        </div>
                      </div>
 
-                     <div className="pt-4 flex gap-4">
-                        <button onClick={() => setStep(1)} className="flex-1 bg-gray-100 text-gray-700 py-4 rounded-xl font-bold hover:bg-gray-200 transition-all">
+                     <div className="pt-6 flex gap-4">
+                        <button onClick={() => setStep(1)} className="px-8 bg-white text-slate-700 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50 transition-all">
                            Späť
                         </button>
-                        <button onClick={handleNext} className="flex-[2] bg-slovak-blue text-white py-4 rounded-xl font-bold hover:bg-slovak-dark transition-all flex items-center justify-center gap-2">
-                           Pokračovať <ChevronRight size={20} />
+                        <button onClick={handleNext} className="flex-1 bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
+                           Skontrolovať <ChevronRight size={20} />
                         </button>
                      </div>
                   </div>
@@ -278,36 +267,35 @@ const CreateListing: React.FC = () => {
             {/* Step 3: Verification & Preview */}
             {step === 3 && (
                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                  <div className="text-center mb-8">
-                     <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <ShieldCheck size={32} />
+                  <div className="text-center mb-10">
+                     <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm ring-4 ring-emerald-50">
+                        <ShieldCheck size={40} />
                      </div>
-                     <h1 className="text-2xl font-bold text-gray-900">Vyzerá to skvele, {user?.name}!</h1>
-                     <p className="text-gray-500">Vaša identita je overená. Inzerát je pripravený.</p>
+                     <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Takmer hotovo!</h1>
+                     <p className="text-slate-500 max-w-md mx-auto">Skontrolujte náhľad inzerátu. Vaša identita bola automaticky overená cez BankID.</p>
                   </div>
 
-                  <div className="bg-gray-50 rounded-2xl p-6 mb-8 flex gap-4 border border-gray-200">
-                     {previewUrls.length > 0 && <img src={previewUrls[0]} className="w-24 h-24 object-cover rounded-lg" alt="Preview" />}
+                  <div className="bg-slate-50 rounded-2xl p-5 mb-8 flex gap-5 border border-slate-200 items-center">
+                     {previewUrls.length > 0 && <img src={previewUrls[0]} className="w-24 h-24 object-cover rounded-lg shadow-sm" alt="Preview" />}
                      <div>
-                        <h3 className="font-bold text-lg text-gray-900">{formData.title}</h3>
-                        <p className="text-slovak-blue font-bold text-xl">{formData.price} €</p>
-                        <p className="text-sm text-gray-500">{formData.city}, {formData.region}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                           {formData.isPremium && <span className="text-xs bg-slovak-gold/20 text-slovak-dark px-2 py-0.5 rounded font-bold">PREMIUM Listing</span>}
-                        </div>
+                        <h3 className="font-bold text-lg text-slate-900 line-clamp-1">{formData.title}</h3>
+                        <p className="text-indigo-600 font-bold text-2xl my-1">{formData.price} €</p>
+                        <p className="text-sm text-slate-500 font-medium">{formData.city}, {formData.region}</p>
                      </div>
                   </div>
 
                   <button 
                     onClick={handlePublish} 
                     disabled={isLoading}
-                    className="w-full bg-slovak-blue text-white py-4 rounded-xl font-bold hover:bg-slovak-dark transition-all shadow-xl shadow-slovak-blue/20 hover:shadow-slovak-blue/30 active:scale-95 flex items-center justify-center gap-2"
+                    className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 hover:shadow-indigo-300 active:scale-[0.98] flex items-center justify-center gap-2"
                   >
                      {isLoading ? <Loader2 className="animate-spin" /> : 'Zverejniť inzerát'}
                   </button>
-                  <p className="text-xs text-gray-400 text-center mt-4">
-                     Kliknutím súhlasíte s podmienkami inzercie.
-                  </p>
+                  
+                  <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-400">
+                     <AlertCircle size={14} />
+                     <p>Kliknutím súhlasíte s podmienkami používania platformy Prémiov.</p>
+                  </div>
                </motion.div>
             )}
 

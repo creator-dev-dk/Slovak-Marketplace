@@ -1,20 +1,10 @@
 import { create } from 'zustand';
-import { Listing, VerificationLevel, Category, Conversation, Message } from '../types';
+import { Listing, VerificationLevel, Category, Conversation, Message, CreateListingPayload } from '../types';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 type Language = 'SK' | 'EN';
-
-interface CreateListingPayload {
-  title: string;
-  price: string;
-  categoryId: string;
-  description: string;
-  isPremium: boolean;
-  city: string;
-  region: string;
-}
 
 interface AppState {
   // Config
@@ -22,6 +12,7 @@ interface AppState {
 
   // Search & Data
   listings: Listing[];
+  userListings: Listing[]; 
   currentListing: Listing | null;
   categories: Category[]; 
   isLoading: boolean;
@@ -55,10 +46,18 @@ interface AppState {
   setRegion: (region: string | null) => void;
   
   fetchListings: () => Promise<void>;
+  fetchUserListings: () => Promise<void>;
   fetchListingById: (id: string) => Promise<void>;
   fetchCategories: () => Promise<void>;
   addListing: (listingData: CreateListingPayload, files: File[]) => Promise<void>;
+  updateListing: (id: string, listingData: Partial<CreateListingPayload>) => Promise<void>;
+  deleteListing: (id: string) => Promise<void>;
+  toggleListingStatus: (id: string, isActive: boolean) => Promise<void>;
+  incrementViewCount: (id: string) => Promise<void>;
   
+  // User Profile Actions
+  updateProfile: (fullName: string, avatarFile?: File) => Promise<void>;
+
   // Chat Actions
   fetchConversations: () => Promise<void>;
   startConversation: (listingId: string, sellerId: string) => Promise<string>;
@@ -67,6 +66,7 @@ interface AppState {
   sendMessage: (content: string) => Promise<void>;
   subscribeToMessages: () => void;
   unsubscribeFromMessages: () => void;
+  fetchUnreadCount: () => Promise<void>;
 
   toggleFavorite: (id: string) => void;
   
@@ -88,6 +88,7 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       language: 'SK',
       listings: [],
+      userListings: [],
       currentListing: null,
       categories: [],
       isLoading: false,
@@ -136,7 +137,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // --- FETCH LISTINGS ---
+      // --- FETCH LISTINGS (PUBLIC) ---
       fetchListings: async () => {
         set({ isLoading: true, error: null });
         const { searchQuery, selectedCategory, selectedRegion } = get();
@@ -169,6 +170,8 @@ export const useAppStore = create<AppState>()(
             imageUrl: item.images && item.images.length > 0 ? item.images[0] : '',
             category: item.categories?.name || 'Iné',
             isPremium: item.is_premium,
+            isActive: item.is_active,
+            viewsCount: item.views_count,
             verificationLevel: item.users?.verification_level as VerificationLevel || VerificationLevel.NONE,
             sellerName: item.users?.full_name || 'Predajca',
             postedAt: new Date(item.created_at).toLocaleDateString('sk-SK'),
@@ -179,6 +182,49 @@ export const useAppStore = create<AppState>()(
         } catch (err: any) {
           console.error('Error fetching listings:', err);
           set({ error: err.message, isLoading: false });
+        }
+      },
+
+      // --- FETCH USER LISTINGS (PRIVATE) ---
+      fetchUserListings: async () => {
+        const { user } = get();
+        if (!user) return;
+        set({ isLoading: true, error: null });
+
+        try {
+          const { data, error } = await supabase
+            .from('listings')
+            .select(`
+              *,
+              users ( full_name, avatar_url, verification_level ),
+              categories ( name, icon_name )
+            `)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+          if (error) throw error;
+
+          const mappedListings: Listing[] = (data || []).map((item: any) => ({
+            id: item.id,
+            userId: item.user_id,
+            title: item.title,
+            price: item.price,
+            currency: item.currency || '€',
+            location: `${item.city}, ${item.region}`,
+            imageUrl: item.images && item.images.length > 0 ? item.images[0] : '',
+            category: item.categories?.name || 'Iné',
+            isPremium: item.is_premium,
+            isActive: item.is_active,
+            viewsCount: item.views_count,
+            verificationLevel: item.users?.verification_level as VerificationLevel || VerificationLevel.NONE,
+            sellerName: item.users?.full_name || 'Predajca',
+            postedAt: new Date(item.created_at).toLocaleDateString('sk-SK'),
+            description: item.description,
+          }));
+
+          set({ userListings: mappedListings, isLoading: false });
+        } catch (err: any) {
+          console.error('Error fetching user listings:', err);
         }
       },
 
@@ -208,6 +254,8 @@ export const useAppStore = create<AppState>()(
              imageUrl: data.images && data.images.length > 0 ? data.images[0] : '',
              category: data.categories?.name || 'Iné',
              isPremium: data.is_premium,
+             isActive: data.is_active,
+             viewsCount: data.views_count,
              verificationLevel: data.users?.verification_level as VerificationLevel || VerificationLevel.NONE,
              sellerName: data.users?.full_name || 'Predajca',
              postedAt: new Date(data.created_at).toLocaleDateString('sk-SK'),
@@ -222,7 +270,7 @@ export const useAppStore = create<AppState>()(
       },
 
       addListing: async (listingData, files) => {
-        const { user, fetchListings } = get();
+        const { user, fetchListings, fetchUserListings } = get();
         if (!user) return;
         set({ isLoading: true, error: null });
 
@@ -255,11 +303,164 @@ export const useAppStore = create<AppState>()(
           });
 
           if (insertError) throw insertError;
-          await fetchListings();
+          await Promise.all([fetchListings(), fetchUserListings()]);
         } catch (err: any) {
           console.error('Error creating listing:', err);
           set({ error: err.message || 'Chyba pri vytváraní inzerátu', isLoading: false });
           throw err;
+        }
+      },
+
+      updateListing: async (id, listingData) => {
+        set({ isLoading: true, error: null });
+        try {
+          const updates: any = {};
+          if (listingData.title) updates.title = listingData.title;
+          if (listingData.price) updates.price = parseFloat(listingData.price.replace(',', '.'));
+          if (listingData.description) updates.description = listingData.description;
+          if (listingData.categoryId) updates.category_id = listingData.categoryId;
+          if (listingData.city) updates.city = listingData.city;
+          if (listingData.region) updates.region = listingData.region;
+          if (listingData.isPremium !== undefined) updates.is_premium = listingData.isPremium;
+          updates.updated_at = new Date().toISOString();
+
+          const { error } = await supabase
+            .from('listings')
+            .update(updates)
+            .eq('id', id);
+
+          if (error) throw error;
+          
+          await Promise.all([
+             get().fetchListings(),
+             get().fetchUserListings(),
+             get().fetchListingById(id)
+          ]);
+        } catch (err: any) {
+           console.error('Error updating listing:', err);
+           set({ error: err.message, isLoading: false });
+           throw err;
+        } finally {
+            set({ isLoading: false });
+        }
+      },
+
+      deleteListing: async (id: string) => {
+        set({ isLoading: true });
+        try {
+            const { error } = await supabase
+                .from('listings')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            
+            // Optimistic update for both lists
+            const newListings = get().listings.filter(l => l.id !== id);
+            const newUserListings = get().userListings.filter(l => l.id !== id);
+            set({ listings: newListings, userListings: newUserListings });
+        } catch (err: any) {
+            console.error('Error deleting listing:', err);
+            set({ error: err.message });
+        } finally {
+            set({ isLoading: false });
+        }
+      },
+
+      toggleListingStatus: async (id: string, isActive: boolean) => {
+        try {
+            const { error } = await supabase
+                .from('listings')
+                .update({ is_active: isActive })
+                .eq('id', id);
+
+            if (error) throw error;
+            
+            // Update currentListing if it matches
+            const { currentListing } = get();
+            if (currentListing && currentListing.id === id) {
+                set({ currentListing: { ...currentListing, isActive } });
+            }
+
+            // Refresh lists
+            await Promise.all([
+                get().fetchListings(),
+                get().fetchUserListings()
+            ]);
+        } catch (err: any) {
+            console.error('Error updating listing status:', err);
+        }
+      },
+
+      incrementViewCount: async (id: string) => {
+          try {
+              // Attempt RPC call
+              const { error } = await supabase.rpc('increment_views', { row_id: id });
+              
+              if (error) {
+                  // Fallback: Read-Modify-Write if RPC is missing
+                  // Not atomic, but sufficient for view counts
+                  const { data } = await supabase.from('listings').select('views_count').eq('id', id).single();
+                  if (data) {
+                      await supabase.from('listings').update({ views_count: (data.views_count || 0) + 1 }).eq('id', id);
+                  }
+              }
+          } catch (e) {
+              // Ignore analytics errors
+          }
+      },
+
+      updateProfile: async (fullName, avatarFile) => {
+        const { user } = get();
+        if (!user) return;
+        set({ isLoading: true });
+
+        try {
+            let avatarUrl = user.avatar;
+
+            // Upload new avatar if provided
+            if (avatarFile) {
+                const fileExt = avatarFile.name.split('.').pop();
+                const fileName = `avatar_${Date.now()}.${fileExt}`;
+                const filePath = `${user.id}/${fileName}`;
+                
+                const { error: uploadError } = await supabase.storage.from('images').upload(filePath, avatarFile);
+                if (uploadError) throw uploadError;
+                
+                const { data } = supabase.storage.from('images').getPublicUrl(filePath);
+                avatarUrl = data.publicUrl;
+            }
+
+            // Update user profile in DB
+            const { error } = await supabase
+                .from('users')
+                .update({ 
+                    full_name: fullName,
+                    avatar_url: avatarUrl !== user.avatar ? avatarUrl : undefined
+                })
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            // Update local state
+            set({ 
+                user: {
+                    ...user,
+                    name: fullName,
+                    avatar: avatarUrl && avatarUrl.startsWith('http') ? (
+                        // If it's a URL, we can't easily put it in the avatar field which expects a string/node
+                        // For this app, we'll store the URL. Navbar handles it.
+                         avatarUrl 
+                    ) : fullName.charAt(0).toUpperCase()
+                }
+            });
+
+        } catch (err: any) {
+            console.error('Error updating profile:', err);
+            set({ error: err.message });
+            throw err;
+        } finally {
+            set({ isLoading: false });
         }
       },
 
@@ -362,6 +563,7 @@ export const useAppStore = create<AppState>()(
 
       fetchMessages: async (conversationId: string) => {
           set({ isChatLoading: true });
+          const { user } = get();
           try {
               const { data, error } = await supabase
                 .from('messages')
@@ -371,11 +573,63 @@ export const useAppStore = create<AppState>()(
             
               if (error) throw error;
               set({ messages: data as Message[] });
+              
+              // Mark as read if user is logged in
+              if (user) {
+                  await supabase
+                    .from('messages')
+                    .update({ is_read: true })
+                    .eq('conversation_id', conversationId)
+                    .neq('sender_id', user.id) // Only mark incoming messages
+                    .eq('is_read', false);
+                    
+                   // Refresh global unread count
+                   get().fetchUnreadCount(); 
+              }
+
               get().subscribeToMessages();
           } catch (err) {
               console.error('Error fetching messages:', err);
           } finally {
               set({ isChatLoading: false });
+          }
+      },
+
+      fetchUnreadCount: async () => {
+          const { user } = get();
+          if (!user) return;
+          try {
+             // We need to find messages where receiver is me. 
+             // Since we don't have receiver_id, we check conversations where I am a participant
+             // But simpler query: messages where sender_id is NOT me and is_read is false,
+             // JOIN conversations... this is complex via client.
+             // Simplified: Get count of messages in my conversations not sent by me.
+             // Best effort for this schema:
+             
+             // 1. Get my conversation IDs
+             const { data: convs } = await supabase
+                 .from('conversations')
+                 .select('id')
+                 .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`);
+             
+             if (!convs || convs.length === 0) {
+                 set({ unreadMessagesCount: 0 });
+                 return;
+             }
+             
+             const convIds = convs.map(c => c.id);
+             
+             const { count } = await supabase
+                 .from('messages')
+                 .select('*', { count: 'exact', head: true })
+                 .in('conversation_id', convIds)
+                 .neq('sender_id', user.id)
+                 .eq('is_read', false);
+                 
+             set({ unreadMessagesCount: count || 0 });
+
+          } catch (e) {
+              console.error(e);
           }
       },
 
@@ -408,7 +662,7 @@ export const useAppStore = create<AppState>()(
       },
 
       subscribeToMessages: () => {
-          const { activeConversationId } = get();
+          const { activeConversationId, user } = get();
           if (!activeConversationId) return;
 
           if (messageSubscription) {
@@ -430,7 +684,17 @@ export const useAppStore = create<AppState>()(
                     set((state) => ({
                         messages: [...state.messages, newMessage]
                     }));
-                    // Refresh sidebar to update timestamps/order
+                    
+                    // If the message is incoming (not from me), clear unread immediately as we are viewing it
+                    if (user && newMessage.sender_id !== user.id) {
+                         supabase
+                            .from('messages')
+                            .update({ is_read: true })
+                            .eq('id', newMessage.id)
+                            .then(() => get().fetchUnreadCount());
+                    }
+
+                    // Refresh sidebar
                     get().fetchConversations();
                 }
             )
@@ -473,9 +737,13 @@ export const useAppStore = create<AppState>()(
                   // Use metadata or email prefix if profile doesn't exist yet
                   name: profile?.full_name || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User', 
                   type: 'buyer', 
-                  avatar: profile?.avatar_url || 'U' 
+                  avatar: profile?.avatar_url || (profile?.full_name || 'U').charAt(0).toUpperCase()
                 } 
               });
+              
+              // Init fetch unread
+              get().fetchUnreadCount();
+
             } else {
               set({ isLoggedIn: false, user: null });
             }

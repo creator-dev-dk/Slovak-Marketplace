@@ -1,3 +1,4 @@
+
 export interface Category {
   id: string;
   name: string;
@@ -27,10 +28,22 @@ export interface Listing {
   imageUrl: string;
   category: string;
   isPremium: boolean;
+  isActive?: boolean; // Added for status management
+  viewsCount?: number; // Added for analytics
   verificationLevel: VerificationLevel;
   sellerName: string;
   postedAt: string;
   description?: string;
+}
+
+export interface CreateListingPayload {
+  title: string;
+  price: string;
+  categoryId: string;
+  description: string;
+  isPremium: boolean;
+  city: string;
+  region: string;
 }
 
 export interface User {

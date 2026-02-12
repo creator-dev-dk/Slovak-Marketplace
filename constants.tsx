@@ -84,5 +84,3 @@ export const MOCK_LISTINGS: Listing[] = [
     postedAt: 'Včera',
   },
 ];
-
-export const PRD_CONTENT = `...`;

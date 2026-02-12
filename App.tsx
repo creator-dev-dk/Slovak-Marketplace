@@ -4,6 +4,8 @@ import Home from './pages/Home';
 import About from './pages/About';
 import ListingDetail from './pages/ListingDetail';
 import CreateListing from './pages/CreateListing';
+import EditListing from './pages/EditListing';
+import EditProfile from './pages/EditProfile';
 import UserProfile from './pages/UserProfile';
 import Chat from './pages/Chat';
 import ScrollToTop from './components/ScrollToTop';
@@ -26,6 +28,8 @@ const App: React.FC = () => {
         <Route path="/" element={<Home />} />
         <Route path="/listing/:id" element={<ListingDetail />} />
         <Route path="/create" element={<CreateListing />} />
+        <Route path="/edit/:id" element={<EditListing />} />
+        <Route path="/settings" element={<EditProfile />} />
         <Route path="/profile" element={<UserProfile />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/about" element={<About />} />

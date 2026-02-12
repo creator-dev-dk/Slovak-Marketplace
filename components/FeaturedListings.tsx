@@ -6,10 +6,8 @@ import { ArrowRight, Search } from 'lucide-react';
 const FeaturedListings: React.FC = () => {
   const { listings, searchQuery } = useAppStore();
 
-  const filteredListings = listings.filter(listing => 
-    listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    listing.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Listings are already filtered in the store via fetchListings
+  const filteredListings = listings;
 
   return (
     <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

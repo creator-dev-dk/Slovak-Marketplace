@@ -3,30 +3,69 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { MapPin, ShieldCheck, Share2, Heart, ArrowLeft, CheckCircle2, BadgeCheck, MessageSquare, Phone, Loader2 } from 'lucide-react';
+import ListingCard from '../components/ListingCard';
+import { 
+  MapPin, 
+  ShieldCheck, 
+  Share2, 
+  Heart, 
+  ArrowLeft, 
+  CheckCircle2, 
+  BadgeCheck, 
+  MessageSquare, 
+  Phone, 
+  Loader2,
+  Calendar,
+  Eye,
+  Flag,
+  EyeOff,
+  Pencil,
+  Trash2
+} from 'lucide-react';
 import { VerificationLevel } from '../types';
 import { motion } from 'framer-motion';
 
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentListing, fetchListingById, toggleFavorite, favorites, isLoggedIn, openAuthModal, isLoading, user, startConversation } = useAppStore();
+  const { 
+    currentListing, 
+    fetchListingById, 
+    toggleFavorite, 
+    favorites, 
+    isLoggedIn, 
+    openAuthModal, 
+    isLoading, 
+    user, 
+    startConversation,
+    listings,
+    incrementViewCount,
+    deleteListing,
+    toggleListingStatus 
+  } = useAppStore();
   
   const [isStartingChat, setIsStartingChat] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (id) {
         fetchListingById(id);
+        incrementViewCount(id);
     }
-  }, [id, fetchListingById]);
+  }, [id, fetchListingById, incrementViewCount]);
+
+  // Find similar listings (same category, excluding current)
+  const similarListings = currentListing 
+    ? listings.filter(l => l.category === currentListing.category && l.id !== currentListing.id).slice(0, 4)
+    : [];
 
   // Loading state
   if (isLoading) {
       return (
-        <div className="min-h-screen flex flex-col bg-slovak-light">
+        <div className="min-h-screen flex flex-col bg-slate-50">
            <Navbar />
            <div className="flex-grow flex items-center justify-center">
-               <Loader2 className="animate-spin text-slovak-blue" size={40} />
+               <Loader2 className="animate-spin text-indigo-600" size={40} />
            </div>
            <Footer />
         </div>
@@ -35,12 +74,12 @@ const ListingDetail: React.FC = () => {
 
   if (!currentListing) {
     return (
-      <div className="min-h-screen flex flex-col bg-slovak-light">
+      <div className="min-h-screen flex flex-col bg-slate-50">
         <Navbar />
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-slovak-blue mb-4">Inzerát sa nenašiel</h2>
-            <Link to="/" className="text-slovak-gold hover:underline">Späť na domovskú stránku</Link>
+            <h2 className="text-2xl font-bold text-slate-900 mb-4">Inzerát sa nenašiel</h2>
+            <Link to="/" className="text-indigo-600 hover:underline font-medium">Späť na domovskú stránku</Link>
           </div>
         </div>
         <Footer />
@@ -65,7 +104,6 @@ const ListingDetail: React.FC = () => {
 
       setIsStartingChat(true);
       try {
-          // This creates a conversation in DB (or finds existing) and sets it as active in store
           await startConversation(listing.id, listing.userId);
           navigate('/chat');
       } catch (error) {
@@ -76,152 +114,254 @@ const ListingDetail: React.FC = () => {
       }
   }
 
+  const handleToggleStatus = async () => {
+      setIsProcessing(true);
+      const newStatus = listing.isActive === false ? true : false;
+      await toggleListingStatus(listing.id, newStatus);
+      setIsProcessing(false);
+  };
+
+  const handleDelete = async () => {
+      if (window.confirm('Naozaj chcete odstrániť tento inzerát? Táto akcia je nevratná.')) {
+          setIsProcessing(true);
+          await deleteListing(listing.id);
+          navigate('/');
+      }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-slovak-light font-sans">
+    <div className="min-h-screen flex flex-col bg-slate-50 font-sans selection:bg-indigo-100 selection:text-indigo-900">
       <Navbar />
       
       <main className="flex-grow py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          {/* Breadcrumb & Back */}
-          <div className="mb-6 flex items-center gap-2 text-sm text-gray-500">
-            <Link to="/" className="hover:text-slovak-blue flex items-center gap-1 transition-colors">
-              <ArrowLeft size={16} /> Späť na výpis
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-2 text-sm text-slate-500 mb-8 overflow-hidden whitespace-nowrap">
+            <Link to="/" className="hover:text-indigo-600 flex items-center gap-1 transition-colors">
+              <ArrowLeft size={16} /> Späť
             </Link>
-            <span>/</span>
-            <span className="capitalize">{listing.category}</span>
-            <span>/</span>
-            <span className="text-gray-900 font-medium truncate max-w-[200px]">{listing.title}</span>
-          </div>
+            <span className="text-slate-300">/</span>
+            <Link to="/" className="hover:text-indigo-600 transition-colors capitalize">{listing.category}</Link>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-900 font-medium truncate">{listing.title}</span>
+          </nav>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
             
-            {/* Left Column: Images & Description */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Main Image */}
-              <div className="relative aspect-[4/3] w-full rounded-3xl overflow-hidden shadow-soft group">
+            {/* Left Column: Images & Content (8 cols) */}
+            <div className="lg:col-span-8 space-y-8">
+              
+              {/* Main Gallery */}
+              <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden bg-white shadow-sm border border-slate-200 group">
                 <img 
                   src={listing.imageUrl} 
                   alt={listing.title} 
-                  className="w-full h-full object-cover"
+                  className={`w-full h-full object-cover ${listing.isActive === false ? 'grayscale' : ''}`}
                 />
-                <div className="absolute top-4 right-4 flex gap-3">
+                
+                {listing.isActive === false && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-10">
+                        <span className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold text-xl uppercase tracking-widest shadow-xl">Predané</span>
+                    </div>
+                )}
+                
+                {/* Overlay Controls */}
+                <div className="absolute top-4 right-4 flex gap-2 z-20">
                    <motion.button 
-                     whileTap={{ scale: 0.8 }}
+                     whileTap={{ scale: 0.9 }}
                      onClick={() => toggleFavorite(listing.id)}
-                     className="p-3 bg-white/80 backdrop-blur-md rounded-full text-gray-600 hover:text-slovak-gold hover:bg-white transition-all shadow-lg"
+                     className={`p-2.5 rounded-xl backdrop-blur-md border transition-all ${isFavorite ? 'bg-white text-rose-500 border-rose-100' : 'bg-black/20 text-white border-white/20 hover:bg-white hover:text-rose-500'}`}
                    >
-                      <Heart size={20} fill={isFavorite ? "#C5A059" : "none"} className={isFavorite ? "stroke-slovak-gold" : ""} />
+                      <Heart size={20} fill={isFavorite ? "currentColor" : "none"} />
                    </motion.button>
-                   <button className="p-3 bg-white/80 backdrop-blur-md rounded-full text-gray-600 hover:text-slovak-blue hover:bg-white transition-all shadow-lg">
+                   <button className="p-2.5 bg-black/20 backdrop-blur-md rounded-xl text-white border border-white/20 hover:bg-white hover:text-indigo-600 transition-all">
                       <Share2 size={20} />
                    </button>
                 </div>
+
                 {listing.isPremium && (
-                  <div className="absolute top-4 left-4 bg-slovak-blue text-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-lg border border-white/10">
-                    Premium Listing
+                  <div className="absolute top-4 left-4 bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider shadow-lg z-20">
+                    Premium
                   </div>
                 )}
               </div>
 
+              {/* Meta Info Bar */}
+              <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500 pb-6 border-b border-slate-200">
+                  <div className="flex items-center gap-1.5">
+                      <Calendar size={16} />
+                      <span>Pridané {listing.postedAt}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                      <Eye size={16} />
+                      <span>{listing.viewsCount || 0} videní</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                      <MapPin size={16} />
+                      <span>{listing.location}</span>
+                  </div>
+                  <button className="ml-auto flex items-center gap-1 text-slate-400 hover:text-red-500 transition-colors text-xs font-medium">
+                      <Flag size={14} /> Nahlásiť
+                  </button>
+              </div>
+
               {/* Description */}
-              <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Popis</h2>
-                <div className="prose prose-blue max-w-none text-gray-600 leading-relaxed whitespace-pre-wrap">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 mb-4">O produkte</h2>
+                <div className="prose prose-slate max-w-none text-slate-600 leading-relaxed whitespace-pre-wrap">
                   {listing.description || (
                       <>
                         <p>
-                            Ponúkame na predaj exkluzívny {listing.title}. Tento produkt spĺňa najvyššie štandardy kvality.
+                            Ponúkame na predaj exkluzívny {listing.title}. Tento produkt spĺňa najvyššie štandardy kvality a je pripravený pre nového majiteľa.
                             Nachádza sa v lokalite {listing.location} a je k dispozícii ihneď k odberu.
                         </p>
-                        <p className="mt-4">
-                            Stav: <strong>Ako nové</strong><br/>
-                            Pôvod: <strong>Slovenská distribúcia</strong><br/>
-                            Záruka: <strong>24 mesiacov</strong>
+                        <ul className="my-4 space-y-1 list-disc list-inside">
+                            <li>Stav: <strong>Výborný / Ako nové</strong></li>
+                            <li>Pôvod: <strong>Slovenská distribúcia</strong></li>
+                            <li>Záruka: <strong>Áno, 24 mesiacov</strong></li>
+                        </ul>
+                        <p>
+                            Pre viac informácií alebo dohodnutie obhliadky ma neváhajte kontaktovať správou alebo telefonicky.
                         </p>
                       </>
                   )}
                 </div>
               </div>
+
             </div>
 
-            {/* Right Column: Sidebar / Action Card */}
-            <div className="space-y-6">
+            {/* Right Column: Sidebar (4 cols) */}
+            <div className="lg:col-span-4 space-y-6">
               
-              {/* Price & Seller Card */}
-              <div className="bg-white rounded-3xl p-8 shadow-soft border border-gray-100 sticky top-24">
-                <div className="mb-6 pb-6 border-b border-gray-50">
-                   <span className="text-sm text-gray-400 uppercase tracking-wider font-semibold">Cena</span>
-                   <div className="flex items-baseline gap-2 mt-1">
-                      <h1 className="text-4xl font-bold text-slovak-blue">
-                        {listing.price.toLocaleString('sk-SK')} {listing.currency}
-                      </h1>
+              {/* Sticky Card */}
+              <div className="bg-white rounded-2xl p-6 shadow-xl shadow-slate-200/50 border border-slate-200 sticky top-24">
+                
+                <div className="mb-6">
+                   <p className="text-sm text-slate-500 font-medium mb-1">Cena</p>
+                   <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold text-slate-900 tracking-tight">
+                        {listing.price.toLocaleString('sk-SK')}
+                      </span>
+                      <span className="text-xl font-medium text-slate-400">{listing.currency}</span>
                    </div>
                 </div>
 
                 {/* Seller Info */}
-                <div className="flex items-start gap-4 mb-8">
-                   <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl font-bold text-gray-400">
+                <div className="flex items-center gap-3 mb-6 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                   <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 font-bold">
                       {listing.sellerName.charAt(0)}
                    </div>
-                   <div>
-                      <h3 className="font-bold text-gray-900">{listing.sellerName}</h3>
-                      <div className="flex items-center gap-1.5 mt-1">
+                   <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-slate-900 truncate">{listing.sellerName}</h3>
+                      <div className="flex items-center gap-1">
                         {listing.verificationLevel === VerificationLevel.BANK_ID && (
-                          <span className="text-xs text-slovak-blue font-semibold flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded">
-                             <BadgeCheck size={12} /> BankID Overený
+                          <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
+                             <ShieldCheck size={10} /> BANK ID
                           </span>
                         )}
-                        {listing.verificationLevel === VerificationLevel.CONCIERGE && (
-                          <span className="text-xs text-amber-700 font-semibold flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded">
-                             <ShieldCheck size={12} /> Concierge
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                        <MapPin size={12} /> {listing.location}
+                        <span className="text-[10px] text-slate-400">• Odpovedá do 1h</span>
                       </div>
                    </div>
                 </div>
 
                 {/* Actions */}
                 <div className="space-y-3">
-                   <button className="w-full bg-slovak-blue text-white font-bold py-4 rounded-xl hover:bg-slovak-dark transition-all shadow-lg shadow-slovak-blue/20 flex items-center justify-center gap-2">
-                      <Phone size={20} />
-                      Zobraziť číslo
-                   </button>
-                   {!isOwner && (
-                       <button 
-                          onClick={handleContact}
-                          disabled={isStartingChat}
-                          className="w-full bg-white text-gray-700 border border-gray-200 font-bold py-4 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-                       >
-                          {isStartingChat ? <Loader2 className="animate-spin" size={20}/> : <MessageSquare size={20} />}
-                          Napísať správu
-                       </button>
-                   )}
-                   {isOwner && (
-                       <div className="w-full bg-gray-50 text-gray-500 font-medium py-4 rounded-xl text-center border border-gray-200">
-                           Toto je váš inzerát
+                   {!isOwner ? (
+                       <>
+                        <button 
+                            onClick={handleContact}
+                            disabled={isStartingChat || listing.isActive === false}
+                            className={`w-full text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 active:scale-[0.98] ${listing.isActive === false ? 'bg-slate-400 cursor-not-allowed shadow-none' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                        >
+                            {isStartingChat ? <Loader2 className="animate-spin" size={20}/> : <MessageSquare size={20} />}
+                            {listing.isActive === false ? 'Predané' : 'Kontaktovať predajcu'}
+                        </button>
+                        <button className="w-full bg-white text-slate-700 border border-slate-200 font-bold py-3.5 rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+                            <Phone size={20} />
+                            Zobraziť číslo
+                        </button>
+                       </>
+                   ) : (
+                       <div className="space-y-3">
+                           <button 
+                               onClick={() => navigate(`/edit/${listing.id}`)}
+                               className="w-full bg-slate-800 text-white font-bold py-3.5 rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
+                           >
+                               <Pencil size={18} />
+                               Upraviť inzerát
+                           </button>
+                           
+                           <div className="grid grid-cols-2 gap-3">
+                               <button 
+                                   onClick={handleToggleStatus}
+                                   className={`font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 border ${listing.isActive !== false ? 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}
+                               >
+                                   {isProcessing ? <Loader2 className="animate-spin" size={18} /> : (listing.isActive !== false ? <EyeOff size={18} /> : <Eye size={18} />)}
+                                   {listing.isActive !== false ? 'Skryť' : 'Aktivovať'}
+                               </button>
+
+                               <button 
+                                   onClick={handleDelete}
+                                   className="bg-white text-rose-600 border border-slate-200 font-bold py-3.5 rounded-xl hover:bg-rose-50 hover:border-rose-100 transition-all flex items-center justify-center gap-2"
+                               >
+                                   {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
+                                   Zmazať
+                               </button>
+                           </div>
+                           
+                           {listing.isActive === false && (
+                               <div className="text-center p-3 bg-indigo-50 text-indigo-800 rounded-xl text-sm font-medium border border-indigo-100 flex items-center justify-center gap-2">
+                                   <EyeOff size={16} />
+                                   Tento inzerát je momentálne skrytý
+                               </div>
+                           )}
                        </div>
                    )}
                 </div>
 
                 {/* Trust Badges */}
-                <div className="mt-8 pt-6 border-t border-gray-50 space-y-3">
-                   <div className="flex items-center gap-3 text-sm text-gray-600">
-                      <CheckCircle2 size={18} className="text-green-500" />
-                      <span>Garancia vrátenia peňazí</span>
+                <div className="mt-6 pt-6 border-t border-slate-100 space-y-3">
+                   <div className="flex items-start gap-3">
+                      <div className="bg-emerald-50 p-1.5 rounded-lg text-emerald-600 mt-0.5">
+                         <CheckCircle2 size={16} />
+                      </div>
+                      <div>
+                         <p className="text-sm font-bold text-slate-900">Garancia vrátenia peňazí</p>
+                         <p className="text-xs text-slate-500">Ak tovar nezodpovedá popisu.</p>
+                      </div>
                    </div>
-                   <div className="flex items-center gap-3 text-sm text-gray-600">
-                      <ShieldCheck size={18} className="text-slovak-blue" />
-                      <span>Bezpečná platba cez TatraPay</span>
+                   <div className="flex items-start gap-3">
+                      <div className="bg-indigo-50 p-1.5 rounded-lg text-indigo-600 mt-0.5">
+                         <ShieldCheck size={16} />
+                      </div>
+                      <div>
+                         <p className="text-sm font-bold text-slate-900">Bezpečná platba</p>
+                         <p className="text-xs text-slate-500">Peniaze držíme v bezpečí do odovzdania.</p>
+                      </div>
                    </div>
                 </div>
 
               </div>
             </div>
           </div>
+          
+          {/* Similar Listings Section */}
+          {similarListings.length > 0 && (
+            <div className="mt-24 pt-10 border-t border-slate-200">
+                <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Podobné ponuky</h2>
+                    <Link to="/" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">
+                        Zobraziť viac
+                    </Link>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {similarListings.map(item => (
+                        <ListingCard key={item.id} listing={item} />
+                    ))}
+                </div>
+            </div>
+          )}
 
         </div>
       </main>
