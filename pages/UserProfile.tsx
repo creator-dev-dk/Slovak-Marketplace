@@ -6,11 +6,13 @@ import { BadgeCheck, LayoutGrid, Heart, Settings, ShieldCheck, Bell, LogOut, Tra
 import { motion, AnimatePresence } from 'framer-motion';
 import ListingCard from '../components/ListingCard';
 import { useNavigate } from 'react-router-dom';
+import { TRANSLATIONS } from '../translations';
 
 type Tab = 'listings' | 'favorites' | 'settings';
 
 const UserProfile: React.FC = () => {
-  const { user, userListings, listings, logout, favorites, deleteListing, toggleListingStatus, fetchUserListings } = useAppStore();
+  const { user, userListings, listings, logout, favorites, deleteListing, toggleListingStatus, fetchUserListings, language } = useAppStore();
+  const t = TRANSLATIONS[language];
   const [activeTab, setActiveTab] = useState<Tab>('listings');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -29,9 +31,9 @@ const UserProfile: React.FC = () => {
             <Navbar />
             <div className="flex-grow flex items-center justify-center">
                 <div className="text-center">
-                    <h2 className="text-2xl font-bold text-slate-900 mb-4">Prístup zamietnutý</h2>
-                    <p className="text-slate-500 mb-6">Pre zobrazenie profilu sa musíte prihlásiť.</p>
-                    <button onClick={() => navigate('/')} className="text-indigo-600 font-bold hover:underline">Späť domov</button>
+                    <h2 className="text-2xl font-bold text-slate-900 mb-4">{t.profile.accessDenied}</h2>
+                    <p className="text-slate-500 mb-6">{t.profile.loginRequired}</p>
+                    <button onClick={() => navigate('/')} className="text-indigo-600 font-bold hover:underline">{t.profile.backHome}</button>
                 </div>
             </div>
         </div>
@@ -46,7 +48,7 @@ const UserProfile: React.FC = () => {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    if (window.confirm('Naozaj chcete odstrániť tento inzerát? Táto akcia je nevratná.')) {
+    if (window.confirm(t.listing.deleteConfirm)) {
         setProcessingId(id);
         await deleteListing(id);
         setProcessingId(null);
@@ -99,19 +101,19 @@ const UserProfile: React.FC = () => {
                             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{user.name}</h1>
                             <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full border border-indigo-100 mb-1.5 flex items-center gap-1">
                                 <ShieldCheck size={12} />
-                                BankID Overený
+                                {t.listing.verifiedBank}
                             </span>
                         </div>
-                        <p className="text-slate-500 mb-6 font-medium">Členom od Októbra 2023 • Bratislava</p>
+                        <p className="text-slate-500 mb-6 font-medium">{t.profile.memberSince} Októbra 2023</p>
                         
                         <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                             <div className="bg-slate-50 px-5 py-3 rounded-xl border border-slate-100">
                                 <span className="block text-xl font-bold text-slate-900">{myListings.length}</span>
-                                <span className="text-xs text-slate-400 uppercase tracking-wide font-bold">Inzerátov</span>
+                                <span className="text-xs text-slate-400 uppercase tracking-wide font-bold">{t.profile.listings}</span>
                             </div>
                              <div className="bg-slate-50 px-5 py-3 rounded-xl border border-slate-100">
                                 <span className="block text-xl font-bold text-slate-900">4.9</span>
-                                <span className="text-xs text-slate-400 uppercase tracking-wide font-bold">Hodnotenie</span>
+                                <span className="text-xs text-slate-400 uppercase tracking-wide font-bold">{t.profile.rating}</span>
                             </div>
                         </div>
                     </div>
@@ -119,10 +121,10 @@ const UserProfile: React.FC = () => {
                     {/* Actions */}
                     <div className="flex flex-col gap-3 min-w-[160px]">
                         <button onClick={() => navigate('/settings')} className="w-full border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
-                            <Settings size={18} /> Upraviť profil
+                            <Settings size={18} /> {t.profile.editProfile}
                         </button>
                         <button onClick={() => { logout(); navigate('/'); }} className="w-full bg-rose-50 text-rose-600 font-bold py-3 rounded-xl hover:bg-rose-100 transition-colors flex items-center justify-center gap-2">
-                            <LogOut size={18} /> Odhlásiť sa
+                            <LogOut size={18} /> {t.profile.logout}
                         </button>
                     </div>
                 </div>
@@ -131,9 +133,9 @@ const UserProfile: React.FC = () => {
             {/* Tabs Navigation */}
             <div className="flex justify-center md:justify-start gap-8 mb-8 border-b border-slate-200 px-4">
                 {[
-                    { id: 'listings', label: 'Moje inzeráty', icon: <LayoutGrid size={18} /> },
-                    { id: 'favorites', label: 'Obľúbené', icon: <Heart size={18} /> },
-                    { id: 'settings', label: 'Nastavenia', icon: <Settings size={18} /> },
+                    { id: 'listings', label: t.profile.tabs.listings, icon: <LayoutGrid size={18} /> },
+                    { id: 'favorites', label: t.profile.tabs.favorites, icon: <Heart size={18} /> },
+                    { id: 'settings', label: t.profile.tabs.settings, icon: <Settings size={18} /> },
                 ].map((tab) => (
                     <button
                         key={tab.id}
@@ -177,7 +179,7 @@ const UserProfile: React.FC = () => {
                                             {/* Status Badge Overlays */}
                                             {listing.isActive === false && (
                                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900/80 text-white px-4 py-2 rounded-xl font-bold backdrop-blur-sm z-10 pointer-events-none">
-                                                    PREDANÉ
+                                                    {t.listing.sold}
                                                 </div>
                                             )}
 
@@ -186,21 +188,21 @@ const UserProfile: React.FC = () => {
                                                 <button 
                                                     onClick={(e) => handleEdit(e, listing.id)}
                                                     className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-slate-200"
-                                                    title="Upraviť"
+                                                    title={t.common.edit}
                                                 >
                                                     <Pencil size={16} />
                                                 </button>
                                                 <button 
                                                     onClick={(e) => handleToggleStatus(e, listing.id, listing.isActive)}
                                                     className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-slate-200"
-                                                    title={listing.isActive === false ? "Označiť ako aktívne" : "Označiť ako predané"}
+                                                    title={listing.isActive === false ? t.listing.activate : t.listing.sold}
                                                 >
                                                     {processingId === listing.id ? <Loader2 className="animate-spin" size={16} /> : (listing.isActive === false ? <Eye size={16} /> : <EyeOff size={16} />)}
                                                 </button>
                                                 <button 
                                                     onClick={(e) => handleDelete(e, listing.id)}
                                                     className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-red-50 hover:text-red-600 transition-all border border-slate-200"
-                                                    title="Odstrániť"
+                                                    title={t.common.delete}
                                                 >
                                                     {processingId === listing.id ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
                                                 </button>
@@ -213,8 +215,8 @@ const UserProfile: React.FC = () => {
                                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
                                         <LayoutGrid size={32} />
                                     </div>
-                                    <p className="text-slate-500 font-medium mb-4">Zatiaľ nemáte žiadne aktívne inzeráty.</p>
-                                    <button onClick={() => navigate('/create')} className="text-indigo-600 font-bold hover:underline">Pridať prvý inzerát</button>
+                                    <p className="text-slate-500 font-medium mb-4">{t.profile.emptyListings}</p>
+                                    <button onClick={() => navigate('/create')} className="text-indigo-600 font-bold hover:underline">{t.profile.addFirst}</button>
                                 </div>
                             )}
                         </div>
@@ -228,7 +230,7 @@ const UserProfile: React.FC = () => {
                                 ))
                             ) : (
                                 <div className="col-span-full text-center py-20 text-slate-400 font-medium">
-                                    Zatiaľ nemáte žiadne obľúbené inzeráty.
+                                    {t.profile.emptyFavorites}
                                 </div>
                             )}
                         </div>
@@ -238,14 +240,14 @@ const UserProfile: React.FC = () => {
                         <div className="max-w-2xl bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
                             <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                                 <Bell size={20} className="text-indigo-600" />
-                                Notifikácie
+                                {t.profile.notifications}
                             </h3>
                             
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between py-4 border-b border-slate-50">
                                     <div>
-                                        <p className="font-bold text-slate-900">Emailové upozornenia</p>
-                                        <p className="text-sm text-slate-400">Dostávať správy o nových ponukách</p>
+                                        <p className="font-bold text-slate-900">{t.profile.emailNotif}</p>
+                                        <p className="text-sm text-slate-400">{t.profile.emailNotifDesc}</p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input type="checkbox" className="sr-only peer" defaultChecked />

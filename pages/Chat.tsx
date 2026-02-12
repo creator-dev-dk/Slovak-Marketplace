@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import { useAppStore } from '../store/useStore';
 import { Search, Send, MoreVertical, Paperclip, CheckCheck, Phone, ShieldCheck, MessageCircle, Loader2 } from 'lucide-react';
+import { TRANSLATIONS } from '../translations';
 
 const Chat: React.FC = () => {
   const { 
@@ -14,8 +15,10 @@ const Chat: React.FC = () => {
       fetchConversations, 
       fetchMessages,
       unsubscribeFromMessages,
-      isChatLoading
+      isChatLoading,
+      language
   } = useAppStore();
+  const t = TRANSLATIONS[language];
 
   const [inputMessage, setInputMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -65,7 +68,7 @@ const Chat: React.FC = () => {
               <Navbar />
               <div className="flex-grow flex items-center justify-center">
                   <div className="text-center">
-                    <p className="text-slate-500 mb-4 font-medium">Pre zobrazenie správ sa musíte prihlásiť.</p>
+                    <p className="text-slate-500 mb-4 font-medium">{t.chat.loginReq}</p>
                   </div>
               </div>
           </div>
@@ -83,7 +86,7 @@ const Chat: React.FC = () => {
           <div className={`w-full md:w-96 border-r border-slate-200 flex flex-col bg-white ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
              {/* Header */}
              <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                <h2 className="font-bold text-xl text-slate-900 tracking-tight">Správy</h2>
+                <h2 className="font-bold text-xl text-slate-900 tracking-tight">{t.chat.title}</h2>
                 <div className="flex gap-2">
                    <button className="p-2 hover:bg-slate-50 rounded-lg text-slate-400 transition-colors"><MoreVertical size={20}/></button>
                 </div>
@@ -93,7 +96,7 @@ const Chat: React.FC = () => {
              <div className="p-4">
                 <div className="relative group">
                    <Search className="absolute left-3 top-3 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
-                   <input type="text" placeholder="Hľadať v správach..." className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all placeholder:text-slate-400 text-slate-900" />
+                   <input type="text" placeholder={t.chat.search} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all placeholder:text-slate-400 text-slate-900" />
                 </div>
              </div>
 
@@ -101,7 +104,7 @@ const Chat: React.FC = () => {
              <div className="flex-grow overflow-y-auto custom-scrollbar">
                 {conversations.length === 0 && (
                     <div className="p-8 text-center text-slate-400 text-sm font-medium">
-                        Nemáte zatiaľ žiadne správy.
+                        {t.chat.noMessages}
                     </div>
                 )}
                 {conversations.map(chat => (
@@ -195,7 +198,7 @@ const Chat: React.FC = () => {
                            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
                                <MessageCircle size={32} />
                            </div>
-                           <p className="font-medium">Toto je začiatok vašej konverzácie.</p>
+                           <p className="font-medium">{t.chat.start}</p>
                        </div>
                    ) : (
                        messages.map((msg) => {
@@ -231,7 +234,7 @@ const Chat: React.FC = () => {
                         value={inputMessage}
                         onChange={(e) => setInputMessage(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                        placeholder="Napíšte správu..." 
+                        placeholder={t.chat.typeMessage}
                         className="flex-1 bg-transparent border-none outline-none text-slate-900 placeholder-slate-400 py-2 font-medium"
                       />
                       <button 
@@ -253,7 +256,7 @@ const Chat: React.FC = () => {
                     <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm border border-slate-200 text-slate-300">
                         <MessageCircle size={40} />
                     </div>
-                    <p className="font-medium text-slate-500">Vyberte konverzáciu zo zoznamu</p>
+                    <p className="font-medium text-slate-500">{t.chat.selectChat}</p>
                 </div>
             )}
           </div>

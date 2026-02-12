@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { VerificationLevel } from '../types';
 import { motion } from 'framer-motion';
+import { TRANSLATIONS } from '../translations';
 
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -41,9 +42,11 @@ const ListingDetail: React.FC = () => {
     listings,
     incrementViewCount,
     deleteListing,
-    toggleListingStatus 
+    toggleListingStatus,
+    language
   } = useAppStore();
   
+  const t = TRANSLATIONS[language];
   const [isStartingChat, setIsStartingChat] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -79,7 +82,7 @@ const ListingDetail: React.FC = () => {
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-slate-900 mb-4">Inzerát sa nenašiel</h2>
-            <Link to="/" className="text-indigo-600 hover:underline font-medium">Späť na domovskú stránku</Link>
+            <Link to="/" className="text-indigo-600 hover:underline font-medium">{t.profile.backHome}</Link>
           </div>
         </div>
         <Footer />
@@ -122,7 +125,7 @@ const ListingDetail: React.FC = () => {
   };
 
   const handleDelete = async () => {
-      if (window.confirm('Naozaj chcete odstrániť tento inzerát? Táto akcia je nevratná.')) {
+      if (window.confirm(t.listing.deleteConfirm)) {
           setIsProcessing(true);
           await deleteListing(listing.id);
           navigate('/');
@@ -139,7 +142,7 @@ const ListingDetail: React.FC = () => {
           {/* Breadcrumb */}
           <nav className="flex items-center gap-2 text-sm text-slate-500 mb-8 overflow-hidden whitespace-nowrap">
             <Link to="/" className="hover:text-indigo-600 flex items-center gap-1 transition-colors">
-              <ArrowLeft size={16} /> Späť
+              <ArrowLeft size={16} /> {t.common.back}
             </Link>
             <span className="text-slate-300">/</span>
             <Link to="/" className="hover:text-indigo-600 transition-colors capitalize">{listing.category}</Link>
@@ -162,7 +165,7 @@ const ListingDetail: React.FC = () => {
                 
                 {listing.isActive === false && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-10">
-                        <span className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold text-xl uppercase tracking-widest shadow-xl">Predané</span>
+                        <span className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold text-xl uppercase tracking-widest shadow-xl">{t.listing.sold}</span>
                     </div>
                 )}
                 
@@ -182,7 +185,7 @@ const ListingDetail: React.FC = () => {
 
                 {listing.isPremium && (
                   <div className="absolute top-4 left-4 bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider shadow-lg z-20">
-                    Premium
+                    {t.listing.premium}
                   </div>
                 )}
               </div>
@@ -191,24 +194,24 @@ const ListingDetail: React.FC = () => {
               <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500 pb-6 border-b border-slate-200">
                   <div className="flex items-center gap-1.5">
                       <Calendar size={16} />
-                      <span>Pridané {listing.postedAt}</span>
+                      <span>{t.listing.added} {listing.postedAt}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                       <Eye size={16} />
-                      <span>{listing.viewsCount || 0} videní</span>
+                      <span>{listing.viewsCount || 0} {t.listing.views}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                       <MapPin size={16} />
                       <span>{listing.location}</span>
                   </div>
                   <button className="ml-auto flex items-center gap-1 text-slate-400 hover:text-red-500 transition-colors text-xs font-medium">
-                      <Flag size={14} /> Nahlásiť
+                      <Flag size={14} /> {t.listing.report}
                   </button>
               </div>
 
               {/* Description */}
               <div>
-                <h2 className="text-xl font-bold text-slate-900 mb-4">O produkte</h2>
+                <h2 className="text-xl font-bold text-slate-900 mb-4">{t.listing.about}</h2>
                 <div className="prose prose-slate max-w-none text-slate-600 leading-relaxed whitespace-pre-wrap">
                   {listing.description || (
                       <>
@@ -216,11 +219,6 @@ const ListingDetail: React.FC = () => {
                             Ponúkame na predaj exkluzívny {listing.title}. Tento produkt spĺňa najvyššie štandardy kvality a je pripravený pre nového majiteľa.
                             Nachádza sa v lokalite {listing.location} a je k dispozícii ihneď k odberu.
                         </p>
-                        <ul className="my-4 space-y-1 list-disc list-inside">
-                            <li>Stav: <strong>Výborný / Ako nové</strong></li>
-                            <li>Pôvod: <strong>Slovenská distribúcia</strong></li>
-                            <li>Záruka: <strong>Áno, 24 mesiacov</strong></li>
-                        </ul>
                         <p>
                             Pre viac informácií alebo dohodnutie obhliadky ma neváhajte kontaktovať správou alebo telefonicky.
                         </p>
@@ -238,7 +236,7 @@ const ListingDetail: React.FC = () => {
               <div className="bg-white rounded-2xl p-6 shadow-xl shadow-slate-200/50 border border-slate-200 sticky top-24">
                 
                 <div className="mb-6">
-                   <p className="text-sm text-slate-500 font-medium mb-1">Cena</p>
+                   <p className="text-sm text-slate-500 font-medium mb-1">{t.listing.price}</p>
                    <div className="flex items-baseline gap-1">
                       <span className="text-4xl font-bold text-slate-900 tracking-tight">
                         {listing.price.toLocaleString('sk-SK')}
@@ -257,10 +255,10 @@ const ListingDetail: React.FC = () => {
                       <div className="flex items-center gap-1">
                         {listing.verificationLevel === VerificationLevel.BANK_ID && (
                           <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
-                             <ShieldCheck size={10} /> BANK ID
+                             <ShieldCheck size={10} /> {t.listing.verifiedBank}
                           </span>
                         )}
-                        <span className="text-[10px] text-slate-400">• Odpovedá do 1h</span>
+                        <span className="text-[10px] text-slate-400">• {t.listing.replyTime}</span>
                       </div>
                    </div>
                 </div>
@@ -275,11 +273,11 @@ const ListingDetail: React.FC = () => {
                             className={`w-full text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 active:scale-[0.98] ${listing.isActive === false ? 'bg-slate-400 cursor-not-allowed shadow-none' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                         >
                             {isStartingChat ? <Loader2 className="animate-spin" size={20}/> : <MessageSquare size={20} />}
-                            {listing.isActive === false ? 'Predané' : 'Kontaktovať predajcu'}
+                            {listing.isActive === false ? t.listing.sold : t.listing.contact}
                         </button>
                         <button className="w-full bg-white text-slate-700 border border-slate-200 font-bold py-3.5 rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
                             <Phone size={20} />
-                            Zobraziť číslo
+                            {t.listing.showNumber}
                         </button>
                        </>
                    ) : (
@@ -289,7 +287,7 @@ const ListingDetail: React.FC = () => {
                                className="w-full bg-slate-800 text-white font-bold py-3.5 rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
                            >
                                <Pencil size={18} />
-                               Upraviť inzerát
+                               {t.listing.edit}
                            </button>
                            
                            <div className="grid grid-cols-2 gap-3">
@@ -298,7 +296,7 @@ const ListingDetail: React.FC = () => {
                                    className={`font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 border ${listing.isActive !== false ? 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}
                                >
                                    {isProcessing ? <Loader2 className="animate-spin" size={18} /> : (listing.isActive !== false ? <EyeOff size={18} /> : <Eye size={18} />)}
-                                   {listing.isActive !== false ? 'Skryť' : 'Aktivovať'}
+                                   {listing.isActive !== false ? t.listing.hide : t.listing.activate}
                                </button>
 
                                <button 
@@ -306,14 +304,14 @@ const ListingDetail: React.FC = () => {
                                    className="bg-white text-rose-600 border border-slate-200 font-bold py-3.5 rounded-xl hover:bg-rose-50 hover:border-rose-100 transition-all flex items-center justify-center gap-2"
                                >
                                    {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
-                                   Zmazať
+                                   {t.common.delete}
                                </button>
                            </div>
                            
                            {listing.isActive === false && (
                                <div className="text-center p-3 bg-indigo-50 text-indigo-800 rounded-xl text-sm font-medium border border-indigo-100 flex items-center justify-center gap-2">
                                    <EyeOff size={16} />
-                                   Tento inzerát je momentálne skrytý
+                                   {t.listing.hidden}
                                </div>
                            )}
                        </div>
@@ -327,8 +325,8 @@ const ListingDetail: React.FC = () => {
                          <CheckCircle2 size={16} />
                       </div>
                       <div>
-                         <p className="text-sm font-bold text-slate-900">Garancia vrátenia peňazí</p>
-                         <p className="text-xs text-slate-500">Ak tovar nezodpovedá popisu.</p>
+                         <p className="text-sm font-bold text-slate-900">{t.listing.moneyBack}</p>
+                         <p className="text-xs text-slate-500">{t.listing.moneyBackDesc}</p>
                       </div>
                    </div>
                    <div className="flex items-start gap-3">
@@ -336,8 +334,8 @@ const ListingDetail: React.FC = () => {
                          <ShieldCheck size={16} />
                       </div>
                       <div>
-                         <p className="text-sm font-bold text-slate-900">Bezpečná platba</p>
-                         <p className="text-xs text-slate-500">Peniaze držíme v bezpečí do odovzdania.</p>
+                         <p className="text-sm font-bold text-slate-900">{t.listing.securePay}</p>
+                         <p className="text-xs text-slate-500">{t.listing.securePayDesc}</p>
                       </div>
                    </div>
                 </div>
@@ -350,7 +348,7 @@ const ListingDetail: React.FC = () => {
           {similarListings.length > 0 && (
             <div className="mt-24 pt-10 border-t border-slate-200">
                 <div className="flex items-center justify-between mb-8">
-                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Podobné ponuky</h2>
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.listing.similar}</h2>
                     <Link to="/" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">
                         Zobraziť viac
                     </Link>

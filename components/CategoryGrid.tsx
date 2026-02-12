@@ -1,18 +1,23 @@
 import React from 'react';
 import { CATEGORIES } from '../constants';
 import { useAppStore } from '../store/useStore';
+import { TRANSLATIONS } from '../translations';
 
 const CategoryGrid: React.FC = () => {
-  const { setCategory, selectedCategory } = useAppStore();
+  const { setCategory, selectedCategory, language } = useAppStore();
+  const t = TRANSLATIONS[language];
 
   return (
     <section className="py-2">
         <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-           Prehľadávať kategórie
+           {t.home.browseCategories}
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat.id;
+            // Get translated name if available, otherwise fallback to default
+            const translatedName = t.categories[cat.id as keyof typeof t.categories] || cat.name;
+            
             return (
             <div 
               key={cat.id} 
@@ -28,10 +33,10 @@ const CategoryGrid: React.FC = () => {
               </div>
               
               <span className={`font-semibold text-sm text-center transition-colors ${isSelected ? 'text-indigo-900' : 'text-slate-700 group-hover:text-slate-900'}`}>
-                {cat.name}
+                {translatedName}
               </span>
               <span className={`text-[10px] mt-1 font-medium transition-colors ${isSelected ? 'text-indigo-500' : 'text-slate-400'}`}>
-                {cat.count} inzerátov
+                {cat.count} {t.profile.listings.toLowerCase()}
               </span>
             </div>
           )})}

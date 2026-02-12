@@ -2,9 +2,11 @@ import React from 'react';
 import { useAppStore } from '../store/useStore';
 import ListingCard from './ListingCard';
 import { ArrowRight, Search } from 'lucide-react';
+import { TRANSLATIONS } from '../translations';
 
 const FeaturedListings: React.FC = () => {
-  const { listings, searchQuery } = useAppStore();
+  const { listings, searchQuery, language } = useAppStore();
+  const t = TRANSLATIONS[language];
 
   // Listings are already filtered in the store via fetchListings
   const filteredListings = listings;
@@ -14,15 +16,21 @@ const FeaturedListings: React.FC = () => {
       <div className="flex justify-between items-end mb-8 border-b border-slate-200 pb-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-            {searchQuery ? `Výsledky pre "${searchQuery}"` : 'Najnovšie ponuky'}
+            {searchQuery 
+                ? `${t.featured.resultsFor} "${searchQuery}"` 
+                : t.featured.title
+            }
           </h2>
           <p className="text-slate-500 mt-1 text-sm">
-            {searchQuery ? `Nájdených ${filteredListings.length} inzerátov` : 'Vybrané pre vás z celého Slovenska'}
+            {searchQuery 
+                ? t.featured.found.replace('{count}', filteredListings.length.toString())
+                : t.featured.subtitle
+            }
           </p>
         </div>
         {!searchQuery && (
           <a href="#" className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors hidden md:flex items-center gap-1 text-sm">
-            Zobraziť všetko <ArrowRight size={16} />
+            {t.featured.showAll} <ArrowRight size={16} />
           </a>
         )}
       </div>
@@ -38,14 +46,14 @@ const FeaturedListings: React.FC = () => {
            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
               <Search size={32} />
            </div>
-           <p className="text-slate-900 font-medium mb-1">Ľutujeme, nič sme nenašli.</p>
-           <p className="text-slate-500 text-sm">Skúste zmeniť kľúčové slová alebo odstrániť filtre.</p>
+           <p className="text-slate-900 font-medium mb-1">{t.featured.emptyTitle}</p>
+           <p className="text-slate-500 text-sm">{t.featured.emptyDesc}</p>
         </div>
       )}
       
       <div className="mt-8 text-center md:hidden">
         <button className="text-indigo-600 font-semibold border border-indigo-100 px-6 py-2.5 rounded-lg w-full">
-           Zobraziť všetko
+           {t.featured.showAll}
         </button>
       </div>
     </section>

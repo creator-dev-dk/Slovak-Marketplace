@@ -7,6 +7,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 import { CreateListingPayload } from '../types';
 import { supabase } from '../lib/supabase';
+import { TRANSLATIONS } from '../translations';
 
 const REGION_OPTIONS = [
     'Bratislavský', 'Trnavský', 'Trenčiansky', 'Nitriansky', 
@@ -16,7 +17,8 @@ const REGION_OPTIONS = [
 const EditListing: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { updateListing, user, isLoading, fetchListingById, currentListing, categories, fetchCategories } = useAppStore();
+  const { updateListing, user, isLoading, fetchListingById, currentListing, categories, fetchCategories, language } = useAppStore();
+  const t = TRANSLATIONS[language];
   
   const [formData, setFormData] = useState<CreateListingPayload>({
     title: '',
@@ -51,15 +53,6 @@ const EditListing: React.FC = () => {
             return;
         }
 
-        // Map DB listing to form data
-        // Need to find category ID from name is tricky if we only have name. 
-        // Ideally listing has category_id. The currentListing type has 'category' name string.
-        // We need to fetch the raw listing or rely on mapped category name if unique.
-        // For this demo, let's try to match by name or fetch raw. 
-        // Actually, fetchListingById in store maps 'category' to name.
-        // We should fix fetchListingById to store categoryId or fetch raw here.
-        // For simplicity, let's fetch raw here to get category_id correctly.
-        
         const fetchRaw = async () => {
              const { data } = await supabase.from('listings').select('category_id').eq('id', id).single();
              if(data) {
@@ -108,30 +101,30 @@ const EditListing: React.FC = () => {
       <main className="flex-grow py-12">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <button onClick={() => navigate('/profile')} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 mb-6 font-medium transition-colors">
-                <ArrowLeft size={20} /> Späť na profil
+                <ArrowLeft size={20} /> {t.common.back}
             </button>
 
           <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-12 relative overflow-hidden">
              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                   <div className="flex items-center justify-between mb-8">
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Upraviť inzerát</h1>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{t.create.editTitle}</h1>
                     {/* Image editing hint */}
-                    <span className="text-xs text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">Fotky nie je možné meniť</span>
+                    <span className="text-xs text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">{t.create.noPhotoEdit}</span>
                   </div>
                   
                   <div className="space-y-6">
                      <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Názov inzerátu</label>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">{t.create.form.title}</label>
                         <input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all font-medium text-slate-900" />
                      </div>
                      
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                           <label className="block text-sm font-bold text-slate-700 mb-2">Cena (€)</label>
+                           <label className="block text-sm font-bold text-slate-700 mb-2">{t.create.form.price}</label>
                            <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all font-bold text-lg text-slate-900" />
                         </div>
                          <div>
-                           <label className="block text-sm font-bold text-slate-700 mb-2">Kategória</label>
+                           <label className="block text-sm font-bold text-slate-700 mb-2">{t.create.form.category}</label>
                            <div className="relative">
                                <select 
                                   value={formData.categoryId}
@@ -149,7 +142,7 @@ const EditListing: React.FC = () => {
                      
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                             <label className="block text-sm font-bold text-slate-700 mb-2">Kraj</label>
+                             <label className="block text-sm font-bold text-slate-700 mb-2">{t.create.form.region}</label>
                              <div className="relative">
                                  <select 
                                     value={formData.region}
@@ -164,30 +157,30 @@ const EditListing: React.FC = () => {
                              </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Mesto</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">{t.create.form.city}</label>
                             <input type="text" value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-slate-900" />
                         </div>
                      </div>
 
                      <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Popis</label>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">{t.create.form.desc}</label>
                         <textarea rows={8} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none text-slate-700" ></textarea>
                      </div>
                      
                      <div className="bg-indigo-50 p-4 rounded-xl flex items-start gap-3 border border-indigo-100">
                         <input type="checkbox" id="premium" checked={formData.isPremium} onChange={(e) => setFormData({...formData, isPremium: e.target.checked})} className="mt-1 w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" />
                         <div>
-                            <label htmlFor="premium" className="text-indigo-900 font-bold select-none cursor-pointer">Premium Listing</label>
-                            <p className="text-xs text-indigo-600/80 mt-0.5">Zvýraznenie inzerátu pre rýchlejší predaj.</p>
+                            <label htmlFor="premium" className="text-indigo-900 font-bold select-none cursor-pointer">{t.create.premium}</label>
+                            <p className="text-xs text-indigo-600/80 mt-0.5">{t.create.premiumDesc}</p>
                         </div>
                      </div>
 
                      <div className="pt-6 flex gap-4">
                         <button onClick={() => navigate('/profile')} className="px-8 bg-white text-slate-700 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50 transition-all">
-                           Zrušiť
+                           {t.common.cancel}
                         </button>
                         <button onClick={handleUpdate} disabled={isLoading} className="flex-1 bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
-                           {isLoading ? <Loader2 className="animate-spin" /> : 'Uložiť zmeny'}
+                           {isLoading ? <Loader2 className="animate-spin" /> : t.create.save}
                         </button>
                      </div>
                   </div>

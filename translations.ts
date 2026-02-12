@@ -1,5 +1,22 @@
+
 export const TRANSLATIONS = {
   SK: {
+    common: {
+      back: "Späť",
+      save: "Uložiť",
+      cancel: "Zrušiť",
+      delete: "Vymazať",
+      edit: "Upraviť",
+      loading: "Načítavam...",
+      confirmDelete: "Naozaj chcete odstrániť?",
+      error: "Chyba",
+      success: "Úspech",
+      continue: "Pokračovať",
+      check: "Skontrolovať",
+      publish: "Zverejniť",
+      yes: "Áno",
+      no: "Nie"
+    },
     nav: {
       searchPlaceholder: "Hľadať (napr. Sky Park, Rolex...)",
       login: "Prihlásiť",
@@ -25,10 +42,137 @@ export const TRANSLATIONS = {
         verified: "Overení predajcovia"
       }
     },
+    home: {
+      browseCategories: "Prehľadávať kategórie",
+      ctaTitle: "Máte niečo výnimočné na predaj?",
+      ctaSubtitle: "Pridajte sa k overeným predajcom na Prémiov. Využite náš bezpečný proces predaja, BankID verifikáciu a oslovte bonitnú klientelu.",
+      ctaButton: "Pridať inzerát",
+      ctaNote: "Zaberie to menej ako 3 minúty"
+    },
+    featured: {
+      title: "Najnovšie ponuky",
+      subtitle: "Vybrané pre vás z celého Slovenska",
+      resultsFor: "Výsledky pre",
+      found: "Nájdených {count} inzerátov",
+      showAll: "Zobraziť všetko",
+      emptyTitle: "Ľutujeme, nič sme nenašli.",
+      emptyDesc: "Skúste zmeniť kľúčové slová alebo odstrániť filtre."
+    },
+    trust: {
+      badge: "SECURITY FIRST",
+      titleStart: "Bezpečnosť je naša",
+      titleEnd: "priorita",
+      description: "Eliminovali sme anonymitu. Vďaka integrácii s bankovými systémami a AI moderáciou vytvárame priestor, kde sa nemusíte báť podvodníkov.",
+      bankIdTitle: "BankID Verifikácia",
+      bankIdDesc: "Každý predajca prechádza overením identity cez svoju banku.",
+      moneyTitle: "Garancia peňazí",
+      moneyDesc: "Platba je uvoľnená predajcovi až po tom, čo potvrdíte prijatie tovaru.",
+      cta: "Zistiť viac o bezpečnosti",
+      demoApproved: "Transakcia schválená",
+      demoGateway: "TatraPay Secure Gate",
+      demoItem: "Apple iPhone 14 Pro",
+      demoDelivery: "Doručené cez Packeta Box",
+      demoVerified: "Verified by Prémiov"
+    },
+    categories: {
+      auto: "Auto-Moto",
+      real: "Nehnuteľnosti",
+      fashion: "Móda & Luxury",
+      electro: "Elektronika",
+      services: "Služby",
+      art: "Umenie"
+    },
     listingCard: {
       price: "CENA",
       premium: "PREMIUM",
-      posted: "Pridané"
+      verified: "VERIFIED",
+      posted: "Pridané",
+      sold: "PREDANÉ"
+    },
+    listing: {
+      about: "O produkte",
+      added: "Pridané",
+      views: "videní",
+      report: "Nahlásiť",
+      price: "Cena",
+      contact: "Kontaktovať predajcu",
+      showNumber: "Zobraziť číslo",
+      premium: "Premium",
+      sold: "Predané",
+      hidden: "Skryté",
+      activate: "Aktivovať",
+      hide: "Skryť",
+      similar: "Podobné ponuky",
+      verifiedBank: "BANK ID",
+      replyTime: "Odpovedá do 1h",
+      moneyBack: "Garancia vrátenia peňazí",
+      moneyBackDesc: "Ak tovar nezodpovedá popisu.",
+      securePay: "Bezpečná platba",
+      securePayDesc: "Peniaze držíme v bezpečí do odovzdania.",
+      ownerActions: "Správa inzerátu",
+      edit: "Upraviť inzerát",
+      deleteConfirm: "Naozaj chcete odstrániť tento inzerát? Táto akcia je nevratná."
+    },
+    create: {
+      title: "Pridať inzerát",
+      editTitle: "Upraviť inzerát",
+      steps: { photo: "Fotografie", details: "Detaily", verify: "Verifikácia" },
+      uploadTitle: "Nahrajte fotografie",
+      uploadDesc: "Kvalitné fotky predávajú. Pridajte až 3 zábery vášho produktu.",
+      selectFiles: "Vybrať súbory",
+      form: { 
+        title: "Názov inzerátu", 
+        titlePlaceholder: "Napr. Audi Q8 S-Line 2023",
+        price: "Cena (€)", 
+        category: "Kategória", 
+        selectCategory: "Vyberte kategóriu",
+        region: "Kraj", 
+        city: "Mesto", 
+        cityPlaceholder: "Napr. Petržalka",
+        desc: "Popis",
+        descPlaceholder: "Detailný popis stavu, pôvodu a vlastností..."
+      },
+      premium: "Premium Listing",
+      premiumDesc: "Váš inzerát bude zobrazený na úvodnej stránke a zvýraznený v zozname.",
+      almostDone: "Takmer hotovo!",
+      verifyDesc: "Skontrolujte náhľad inzerátu. Vaša identita bola automaticky overená cez BankID.",
+      publish: "Zverejniť inzerát",
+      save: "Uložiť zmeny",
+      terms: "Kliknutím súhlasíte s podmienkami používania platformy Prémiov.",
+      noPhotoEdit: "Fotky nie je možné meniť"
+    },
+    profile: {
+      accessDenied: "Prístup zamietnutý",
+      loginRequired: "Pre zobrazenie profilu sa musíte prihlásiť.",
+      backHome: "Späť domov",
+      memberSince: "Členom od",
+      listings: "Inzerátov",
+      rating: "Hodnotenie",
+      editProfile: "Upraviť profil",
+      logout: "Odhlásiť sa",
+      tabs: {
+        listings: "Moje inzeráty",
+        favorites: "Obľúbené",
+        settings: "Nastavenia"
+      },
+      emptyListings: "Zatiaľ nemáte žiadne aktívne inzeráty.",
+      addFirst: "Pridať prvý inzerát",
+      emptyFavorites: "Zatiaľ nemáte žiadne obľúbené inzeráty.",
+      notifications: "Notifikácie",
+      emailNotif: "Emailové upozornenia",
+      emailNotifDesc: "Dostávať správy o nových ponukách",
+      editPageTitle: "Upraviť profil",
+      changePhoto: "Kliknite pre zmenu fotky",
+      fullName: "Celé meno"
+    },
+    chat: {
+      title: "Správy",
+      search: "Hľadať v správach...",
+      noMessages: "Nemáte zatiaľ žiadne správy.",
+      typeMessage: "Napíšte správu...",
+      selectChat: "Vyberte konverzáciu zo zoznamu",
+      start: "Toto je začiatok vašej konverzácie.",
+      loginReq: "Pre zobrazenie správ sa musíte prihlásiť."
     },
     footer: {
       slogan: "Definujeme nový štandard online obchodu na Slovensku. Bezpečnosť, rýchlosť a prémiový zážitok v každom detaile.",
@@ -54,12 +198,37 @@ export const TRANSLATIONS = {
     },
     auth: {
       title: "Prihlásenie",
+      registerTitle: "Registrácia",
       subtitle: "Pre pokračovanie zvoľte svoju banku.",
+      registerSubtitle: "Vytvorte si účet a začnite predávať.",
       secured: "Zabezpečené cez BankID",
-      consent: "Prihlásením súhlasíte s podmienkami používania. Vaše údaje sú chránené podľa GDPR."
+      consent: "Prihlásením súhlasíte s podmienkami používania. Vaše údaje sú chránené podľa GDPR.",
+      name: "Celé Meno",
+      email: "Email",
+      password: "Heslo",
+      submitLogin: "Prihlásiť sa",
+      submitRegister: "Vytvoriť účet",
+      haveAccount: "Už máte účet? Prihláste sa",
+      noAccount: "Nemáte účet? Zaregistrujte sa"
     }
   },
   EN: {
+    common: {
+      back: "Back",
+      save: "Save",
+      cancel: "Cancel",
+      delete: "Delete",
+      edit: "Edit",
+      loading: "Loading...",
+      confirmDelete: "Are you sure you want to delete?",
+      error: "Error",
+      success: "Success",
+      continue: "Continue",
+      check: "Check",
+      publish: "Publish",
+      yes: "Yes",
+      no: "No"
+    },
     nav: {
       searchPlaceholder: "Search (e.g. Sky Park, Rolex...)",
       login: "Login",
@@ -85,10 +254,137 @@ export const TRANSLATIONS = {
         verified: "Verified sellers"
       }
     },
+    home: {
+      browseCategories: "Browse Categories",
+      ctaTitle: "Have something exceptional to sell?",
+      ctaSubtitle: "Join verified sellers on Prémiov. Use our secure sales process, BankID verification, and reach premium clientele.",
+      ctaButton: "Add Listing",
+      ctaNote: "Takes less than 3 minutes"
+    },
+    featured: {
+      title: "Latest Offers",
+      subtitle: "Curated for you from all over Slovakia",
+      resultsFor: "Results for",
+      found: "{count} listings found",
+      showAll: "Show All",
+      emptyTitle: "Sorry, we found nothing.",
+      emptyDesc: "Try changing keywords or removing filters."
+    },
+    trust: {
+      badge: "SECURITY FIRST",
+      titleStart: "Security is our",
+      titleEnd: "priority",
+      description: "We eliminated anonymity. Thanks to integration with banking systems and AI moderation, we create a space where you don't have to worry about scammers.",
+      bankIdTitle: "BankID Verification",
+      bankIdDesc: "Every seller goes through identity verification via their bank.",
+      moneyTitle: "Money Back Guarantee",
+      moneyDesc: "Payment is released to the seller only after you confirm receipt of the goods.",
+      cta: "Learn more about security",
+      demoApproved: "Transaction Approved",
+      demoGateway: "TatraPay Secure Gate",
+      demoItem: "Apple iPhone 14 Pro",
+      demoDelivery: "Delivered via Packeta Box",
+      demoVerified: "Verified by Prémiov"
+    },
+    categories: {
+      auto: "Auto-Moto",
+      real: "Real Estate",
+      fashion: "Fashion & Luxury",
+      electro: "Electronics",
+      services: "Services",
+      art: "Art"
+    },
     listingCard: {
       price: "PRICE",
       premium: "PREMIUM",
-      posted: "Posted"
+      verified: "VERIFIED",
+      posted: "Posted",
+      sold: "SOLD"
+    },
+    listing: {
+      about: "About Product",
+      added: "Added",
+      views: "views",
+      report: "Report",
+      price: "Price",
+      contact: "Contact Seller",
+      showNumber: "Show Number",
+      premium: "Premium",
+      sold: "Sold",
+      hidden: "Hidden",
+      activate: "Activate",
+      hide: "Hide",
+      similar: "Similar Offers",
+      verifiedBank: "BANK ID",
+      replyTime: "Replies within 1h",
+      moneyBack: "Money Back Guarantee",
+      moneyBackDesc: "If the item does not match description.",
+      securePay: "Secure Payment",
+      securePayDesc: "We hold funds securely until handover.",
+      ownerActions: "Listing Management",
+      edit: "Edit Listing",
+      deleteConfirm: "Are you sure you want to delete this listing? This action is irreversible."
+    },
+    create: {
+      title: "Add Listing",
+      editTitle: "Edit Listing",
+      steps: { photo: "Photos", details: "Details", verify: "Verification" },
+      uploadTitle: "Upload Photos",
+      uploadDesc: "High quality photos sell. Add up to 3 shots of your product.",
+      selectFiles: "Select Files",
+      form: { 
+        title: "Title", 
+        titlePlaceholder: "e.g. Audi Q8 S-Line 2023",
+        price: "Price (€)", 
+        category: "Category", 
+        selectCategory: "Select Category",
+        region: "Region", 
+        city: "City", 
+        cityPlaceholder: "e.g. Bratislava",
+        desc: "Description",
+        descPlaceholder: "Detailed description of condition, origin and features..."
+      },
+      premium: "Premium Listing",
+      premiumDesc: "Your listing will be highlighted on the homepage.",
+      almostDone: "Almost Done!",
+      verifyDesc: "Check the listing preview. Your identity has been verified via BankID.",
+      publish: "Publish Listing",
+      save: "Save Changes",
+      terms: "By clicking you agree to Prémiov terms of use.",
+      noPhotoEdit: "Photos cannot be changed"
+    },
+    profile: {
+      accessDenied: "Access Denied",
+      loginRequired: "You must log in to view profile.",
+      backHome: "Back Home",
+      memberSince: "Member since",
+      listings: "Listings",
+      rating: "Rating",
+      editProfile: "Edit Profile",
+      logout: "Log Out",
+      tabs: {
+        listings: "My Listings",
+        favorites: "Favorites",
+        settings: "Settings"
+      },
+      emptyListings: "You don't have any active listings yet.",
+      addFirst: "Add First Listing",
+      emptyFavorites: "You don't have any favorite listings yet.",
+      notifications: "Notifications",
+      emailNotif: "Email Notifications",
+      emailNotifDesc: "Receive messages about new offers",
+      editPageTitle: "Edit Profile",
+      changePhoto: "Click to change photo",
+      fullName: "Full Name"
+    },
+    chat: {
+      title: "Messages",
+      search: "Search messages...",
+      noMessages: "You have no messages yet.",
+      typeMessage: "Type a message...",
+      selectChat: "Select a conversation from the list",
+      start: "This is the start of your conversation.",
+      loginReq: "You must log in to view messages."
     },
     footer: {
       slogan: "Defining a new standard for online commerce in Slovakia. Security, speed, and a premium experience in every detail.",
@@ -114,9 +410,18 @@ export const TRANSLATIONS = {
     },
     auth: {
       title: "Login",
+      registerTitle: "Register",
       subtitle: "Choose your bank to continue.",
+      registerSubtitle: "Create an account to start selling.",
       secured: "Secured by BankID",
-      consent: "By logging in, you agree to the terms of use. Your data is protected under GDPR."
+      consent: "By logging in, you agree to the terms of use. Your data is protected under GDPR.",
+      name: "Full Name",
+      email: "Email",
+      password: "Password",
+      submitLogin: "Login",
+      submitRegister: "Create Account",
+      haveAccount: "Already have an account? Login",
+      noAccount: "Don't have an account? Register"
     }
   }
 };

@@ -8,6 +8,7 @@ import TrustValues from '../components/TrustValues';
 import { useAppStore } from '../store/useStore';
 import { ArrowRight, PlusCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { TRANSLATIONS } from '../translations';
 
 const Home: React.FC = () => {
   const { 
@@ -15,10 +16,12 @@ const Home: React.FC = () => {
     selectedCategory, 
     fetchListings,
     openAuthModal,
-    isLoggedIn
+    isLoggedIn,
+    language
   } = useAppStore();
   
   const navigate = useNavigate();
+  const t = TRANSLATIONS[language];
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -72,11 +75,10 @@ const Home: React.FC = () => {
 
                   <div className="max-w-2xl relative z-10">
                       <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
-                        Máte niečo výnimočné na predaj?
+                        {t.home.ctaTitle}
                       </h2>
                       <p className="text-indigo-100 text-lg mb-8 md:mb-0 leading-relaxed">
-                        Pridajte sa k overeným predajcom na Prémiov. Využite náš bezpečný proces predaja, 
-                        BankID verifikáciu a oslovte bonitnú klientelu.
+                        {t.home.ctaSubtitle}
                       </p>
                   </div>
 
@@ -86,11 +88,11 @@ const Home: React.FC = () => {
                         className="group bg-white text-indigo-600 hover:bg-indigo-50 px-8 py-4 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
                       >
                          <PlusCircle size={20} />
-                         Pridať inzerát
+                         {t.home.ctaButton}
                          <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                       </button>
                       <p className="text-indigo-200 text-xs text-center mt-3 font-medium">
-                        Zaberie to menej ako 3 minúty
+                        {t.home.ctaNote}
                       </p>
                   </div>
               </div>

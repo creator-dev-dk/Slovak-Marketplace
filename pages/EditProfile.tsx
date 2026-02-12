@@ -4,10 +4,12 @@ import Footer from '../components/Footer';
 import { useAppStore } from '../store/useStore';
 import { Camera, Save, Loader2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { TRANSLATIONS } from '../translations';
 
 const EditProfile: React.FC = () => {
-  const { user, updateProfile, isLoading } = useAppStore();
+  const { user, updateProfile, isLoading, language } = useAppStore();
   const navigate = useNavigate();
+  const t = TRANSLATIONS[language];
   
   const [fullName, setFullName] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -40,7 +42,7 @@ const EditProfile: React.FC = () => {
           navigate('/profile');
       } catch (err) {
           console.error(err);
-          alert('Nepodarilo sa aktualizovať profil.');
+          alert(t.common.error);
       }
   };
 
@@ -52,11 +54,11 @@ const EditProfile: React.FC = () => {
       <main className="flex-grow py-12">
         <div className="max-w-xl mx-auto px-4 sm:px-6">
             <button onClick={() => navigate('/profile')} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 mb-6 font-medium transition-colors">
-                <ArrowLeft size={20} /> Späť na profil
+                <ArrowLeft size={20} /> {t.common.back}
             </button>
             
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
-                <h1 className="text-2xl font-bold text-slate-900 mb-8">Upraviť profil</h1>
+                <h1 className="text-2xl font-bold text-slate-900 mb-8">{t.profile.editPageTitle}</h1>
                 
                 <form onSubmit={handleSubmit} className="space-y-8">
                     {/* Avatar Upload */}
@@ -74,12 +76,12 @@ const EditProfile: React.FC = () => {
                                 <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                             </label>
                         </div>
-                        <p className="mt-3 text-sm text-slate-500">Kliknite pre zmenu fotky</p>
+                        <p className="mt-3 text-sm text-slate-500">{t.profile.changePhoto}</p>
                     </div>
 
                     {/* Inputs */}
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Celé meno</label>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">{t.profile.fullName}</label>
                         <input 
                             type="text" 
                             value={fullName}
@@ -93,7 +95,7 @@ const EditProfile: React.FC = () => {
                         disabled={isLoading}
                         className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
                     >
-                        {isLoading ? <Loader2 className="animate-spin" /> : <><Save size={20} /> Uložiť zmeny</>}
+                        {isLoading ? <Loader2 className="animate-spin" /> : <><Save size={20} /> {t.common.save}</>}
                     </button>
                 </form>
             </div>

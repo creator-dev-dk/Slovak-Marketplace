@@ -5,6 +5,7 @@ import { Camera, ChevronRight, ShieldCheck, Loader2, X, AlertCircle } from 'luci
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
+import { TRANSLATIONS } from '../translations';
 
 // Exact matches for Postgres enum 'region_enum'
 const REGION_OPTIONS = [
@@ -24,7 +25,8 @@ const CreateListing: React.FC = () => {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   
   const navigate = useNavigate();
-  const { addListing, user, isLoading, isAuthLoading, openAuthModal, categories, fetchCategories } = useAppStore();
+  const { addListing, user, isLoading, isAuthLoading, openAuthModal, categories, fetchCategories, language } = useAppStore();
+  const t = TRANSLATIONS[language];
 
   const [formData, setFormData] = useState({
     title: '',
@@ -61,10 +63,10 @@ const CreateListing: React.FC = () => {
           <div className="flex-grow flex items-center justify-center text-center p-4">
              <div className="max-w-md bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
                 <ShieldCheck size={48} className="mx-auto text-indigo-600 mb-4" />
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">Prihlásenie vyžadované</h2>
-                <p className="text-slate-500 mb-6">Pre pridanie inzerátu sa musíte najprv prihlásiť alebo zaregistrovať.</p>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">{t.profile.accessDenied}</h2>
+                <p className="text-slate-500 mb-6">{t.profile.loginRequired}</p>
                 <button onClick={openAuthModal} className="w-full bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors">
-                   Prihlásiť sa
+                   {t.nav.login}
                 </button>
              </div>
           </div>
@@ -125,9 +127,9 @@ const CreateListing: React.FC = () => {
           {/* Progress Indicator */}
           <div className="mb-10">
             <div className="flex items-center justify-between mb-3 px-1">
-              <span className={`text-xs font-bold uppercase tracking-wider ${step >= 1 ? 'text-indigo-600' : 'text-slate-400'}`}>1. Fotografie</span>
-              <span className={`text-xs font-bold uppercase tracking-wider ${step >= 2 ? 'text-indigo-600' : 'text-slate-400'}`}>2. Detaily</span>
-              <span className={`text-xs font-bold uppercase tracking-wider ${step >= 3 ? 'text-indigo-600' : 'text-slate-400'}`}>3. Verifikácia</span>
+              <span className={`text-xs font-bold uppercase tracking-wider ${step >= 1 ? 'text-indigo-600' : 'text-slate-400'}`}>1. {t.create.steps.photo}</span>
+              <span className={`text-xs font-bold uppercase tracking-wider ${step >= 2 ? 'text-indigo-600' : 'text-slate-400'}`}>2. {t.create.steps.details}</span>
+              <span className={`text-xs font-bold uppercase tracking-wider ${step >= 3 ? 'text-indigo-600' : 'text-slate-400'}`}>3. {t.create.steps.verify}</span>
             </div>
             <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
               <motion.div 
@@ -144,8 +146,8 @@ const CreateListing: React.FC = () => {
             {/* Step 1: Upload */}
             {step === 1 && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Nahrajte fotografie</h1>
-                <p className="text-slate-500 mb-8">Kvalitné fotky predávajú. Pridajte až 3 zábery vášho produktu.</p>
+                <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">{t.create.uploadTitle}</h1>
+                <p className="text-slate-500 mb-8">{t.create.uploadDesc}</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     {previewUrls.map((url, index) => (
@@ -168,7 +170,7 @@ const CreateListing: React.FC = () => {
                             <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center mb-3 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
                                 <Camera size={24} />
                             </div>
-                            <span className="text-xs font-bold text-slate-500 group-hover:text-indigo-600">Vybrať súbory</span>
+                            <span className="text-xs font-bold text-slate-500 group-hover:text-indigo-600">{t.create.selectFiles}</span>
                         </label>
                     )}
                 </div>
@@ -176,7 +178,7 @@ const CreateListing: React.FC = () => {
                 {files.length > 0 && (
                    <div className="mt-8 pt-6 border-t border-slate-100">
                       <button onClick={handleNext} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
-                        Pokračovať <ChevronRight size={20} />
+                        {t.common.continue} <ChevronRight size={20} />
                       </button>
                    </div>
                 )}
@@ -186,28 +188,28 @@ const CreateListing: React.FC = () => {
             {/* Step 2: Details Form */}
             {step === 2 && (
                <motion.div initial={{ opacity: 0, x: 0 }} animate={{ opacity: 1, x: 0 }}>
-                  <h1 className="text-3xl font-bold text-slate-900 mb-8 tracking-tight">Informácie o produkte</h1>
+                  <h1 className="text-3xl font-bold text-slate-900 mb-8 tracking-tight">{t.create.steps.details}</h1>
                   
                   <div className="space-y-6">
                      <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Názov inzerátu</label>
-                        <input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all font-medium text-slate-900 placeholder:text-slate-400" placeholder="Napr. Audi Q8 S-Line 2023" />
+                        <label className="block text-sm font-bold text-slate-700 mb-2">{t.create.form.title}</label>
+                        <input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all font-medium text-slate-900 placeholder:text-slate-400" placeholder={t.create.form.titlePlaceholder} />
                      </div>
                      
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                           <label className="block text-sm font-bold text-slate-700 mb-2">Cena (€)</label>
+                           <label className="block text-sm font-bold text-slate-700 mb-2">{t.create.form.price}</label>
                            <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all font-bold text-lg text-slate-900" placeholder="0" />
                         </div>
                          <div>
-                           <label className="block text-sm font-bold text-slate-700 mb-2">Kategória</label>
+                           <label className="block text-sm font-bold text-slate-700 mb-2">{t.create.form.category}</label>
                            <div className="relative">
                                <select 
                                   value={formData.categoryId}
                                   onChange={(e) => setFormData({...formData, categoryId: e.target.value})}
                                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none bg-white appearance-none text-slate-900 cursor-pointer"
                                >
-                                  <option value="">Vyberte kategóriu</option>
+                                  <option value="">{t.create.form.selectCategory}</option>
                                   {categories.map((cat) => (
                                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                                   ))}
@@ -219,7 +221,7 @@ const CreateListing: React.FC = () => {
                      
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                             <label className="block text-sm font-bold text-slate-700 mb-2">Kraj</label>
+                             <label className="block text-sm font-bold text-slate-700 mb-2">{t.create.form.region}</label>
                              <div className="relative">
                                  <select 
                                     value={formData.region}
@@ -234,30 +236,30 @@ const CreateListing: React.FC = () => {
                              </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Mesto</label>
-                            <input type="text" value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-slate-900" placeholder="Napr. Petržalka" />
+                            <label className="block text-sm font-bold text-slate-700 mb-2">{t.create.form.city}</label>
+                            <input type="text" value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-slate-900" placeholder={t.create.form.cityPlaceholder} />
                         </div>
                      </div>
 
                      <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Popis</label>
-                        <textarea rows={5} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none text-slate-700 placeholder:text-slate-400" placeholder="Detailný popis stavu, pôvodu a vlastností..."></textarea>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">{t.create.form.desc}</label>
+                        <textarea rows={5} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none text-slate-700 placeholder:text-slate-400" placeholder={t.create.form.descPlaceholder}></textarea>
                      </div>
                      
                      <div className="bg-indigo-50 p-4 rounded-xl flex items-start gap-3 border border-indigo-100">
                         <input type="checkbox" id="premium" checked={formData.isPremium} onChange={(e) => setFormData({...formData, isPremium: e.target.checked})} className="mt-1 w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" />
                         <div>
-                            <label htmlFor="premium" className="text-indigo-900 font-bold select-none cursor-pointer">Premium Listing</label>
-                            <p className="text-xs text-indigo-600/80 mt-0.5">Váš inzerát bude zobrazený na úvodnej stránke a zvýraznený v zozname.</p>
+                            <label htmlFor="premium" className="text-indigo-900 font-bold select-none cursor-pointer">{t.create.premium}</label>
+                            <p className="text-xs text-indigo-600/80 mt-0.5">{t.create.premiumDesc}</p>
                         </div>
                      </div>
 
                      <div className="pt-6 flex gap-4">
                         <button onClick={() => setStep(1)} className="px-8 bg-white text-slate-700 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50 transition-all">
-                           Späť
+                           {t.common.back}
                         </button>
                         <button onClick={handleNext} className="flex-1 bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
-                           Skontrolovať <ChevronRight size={20} />
+                           {t.common.check} <ChevronRight size={20} />
                         </button>
                      </div>
                   </div>
@@ -271,8 +273,8 @@ const CreateListing: React.FC = () => {
                      <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm ring-4 ring-emerald-50">
                         <ShieldCheck size={40} />
                      </div>
-                     <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Takmer hotovo!</h1>
-                     <p className="text-slate-500 max-w-md mx-auto">Skontrolujte náhľad inzerátu. Vaša identita bola automaticky overená cez BankID.</p>
+                     <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">{t.create.almostDone}</h1>
+                     <p className="text-slate-500 max-w-md mx-auto">{t.create.verifyDesc}</p>
                   </div>
 
                   <div className="bg-slate-50 rounded-2xl p-5 mb-8 flex gap-5 border border-slate-200 items-center">
@@ -289,12 +291,12 @@ const CreateListing: React.FC = () => {
                     disabled={isLoading}
                     className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 hover:shadow-indigo-300 active:scale-[0.98] flex items-center justify-center gap-2"
                   >
-                     {isLoading ? <Loader2 className="animate-spin" /> : 'Zverejniť inzerát'}
+                     {isLoading ? <Loader2 className="animate-spin" /> : t.create.publish}
                   </button>
                   
                   <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-400">
                      <AlertCircle size={14} />
-                     <p>Kliknutím súhlasíte s podmienkami používania platformy Prémiov.</p>
+                     <p>{t.create.terms}</p>
                   </div>
                </motion.div>
             )}

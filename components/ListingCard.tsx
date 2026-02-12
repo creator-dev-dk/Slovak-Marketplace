@@ -68,13 +68,13 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
           <div className="absolute top-2 left-2 flex flex-col gap-1.5 items-start">
             {listing.isPremium && (
               <span className="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm border border-indigo-500 tracking-wide">
-                PREMIUM
+                {t.listingCard.premium}
               </span>
             )}
              {listing.verificationLevel === VerificationLevel.BANK_ID && (
               <span className="bg-emerald-500/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm border border-emerald-400">
                 <ShieldCheck size={10} />
-                VERIFIED
+                {t.listingCard.verified}
               </span>
             )}
           </div>
