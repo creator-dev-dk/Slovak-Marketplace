@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { X, ShieldCheck, Lock, Mail, Loader2, KeyRound, User, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../store/useStore';
@@ -31,7 +32,12 @@ const AuthModal: React.FC = () => {
       }
       // Modal closes automatically in store on success
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+      let msg = err.message || 'Authentication failed';
+      // Handle the specific schema error gracefully
+      if (msg.includes('Database error querying schema')) {
+          msg = 'System is updating. Please refresh the page.';
+      }
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +139,7 @@ const AuthModal: React.FC = () => {
 
               {error && (
                 <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100 font-medium flex items-center gap-2">
-                   <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                   <div className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></div>
                    {error}
                 </div>
               )}

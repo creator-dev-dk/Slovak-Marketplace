@@ -10,6 +10,7 @@ import EditProfile from './pages/EditProfile';
 import UserProfile from './pages/UserProfile';
 import Favorites from './pages/Favorites';
 import Chat from './pages/Chat';
+import AdminDashboard from './pages/AdminDashboard';
 import ScrollToTop from './components/ScrollToTop';
 import AuthModal from './components/AuthModal';
 import { useAppStore } from './store/useStore';
@@ -36,6 +37,7 @@ const App: React.FC = () => {
         <Route path="/profile/:id" element={<UserProfile />} /> {/* Public Profile Route */}
         <Route path="/favorites" element={<Favorites />} />
         <Route path="/chat" element={<Chat />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/about" element={<About />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -1,4 +1,5 @@
 
+
 export const TRANSLATIONS = {
   SK: {
     common: {
@@ -31,13 +32,13 @@ export const TRANSLATIONS = {
       settings: "Nastavenia"
     },
     hero: {
-      tagline: "NOVÝ ŠTANDARD PREDAJA",
+      tagline: "NEW STANDARD OF SALES",
       titleStart: "Nakupujte a predávajte",
       titleEnd: "s istotou a štýlom.",
-      subtitle: "Prvý slovenský marketplace s verifikáciou cez BankID a Concierge službami pre prémiové tovary.",
-      searchPlaceholder: "Čo hľadáte? (napr. Audi Q8, iPhone 15 Pro)",
+      subtitle: "Slovakia's first marketplace with BankID verification and Concierge services for premium goods.",
+      searchPlaceholder: "What are you looking for? (e.g. Audi Q8, iPhone 15 Pro)",
       locationAll: "Celé Slovensko",
-      searchBtn: "Hľadať",
+      searchBtn: "Search",
       stats: {
         newListings: "nových inzerátov dnes",
         verified: "Overení predajcovia"
@@ -209,9 +210,9 @@ export const TRANSLATIONS = {
     auth: {
       title: "Prihlásenie",
       registerTitle: "Registrácia",
-      subtitle: "Pre pokračovanie zvoľte svoju banku.",
+      subtitle: "Choose your bank to continue.",
       registerSubtitle: "Vytvorte si účet a začnite predávať.",
-      secured: "Zabezpečené cez BankID",
+      secured: "Secured by BankID",
       consent: "Prihlásením súhlasíte s podmienkami používania. Vaše údaje sú chránené podľa GDPR.",
       name: "Celé Meno",
       email: "Email",
@@ -429,19 +430,19 @@ export const TRANSLATIONS = {
       cookies: "Cookies"
     },
     auth: {
-      title: "Login",
-      registerTitle: "Register",
+      title: "Prihlásenie",
+      registerTitle: "Registrácia",
       subtitle: "Choose your bank to continue.",
-      registerSubtitle: "Create an account to start selling.",
+      registerSubtitle: "Vytvorte si účet a začnite predávať.",
       secured: "Secured by BankID",
-      consent: "By logging in, you agree to the terms of use. Your data is protected under GDPR.",
-      name: "Full Name",
+      consent: "Prihlásením súhlasíte s podmienkami používania. Vaše údaje sú chránené podľa GDPR.",
+      name: "Celé Meno",
       email: "Email",
-      password: "Password",
-      submitLogin: "Login",
-      submitRegister: "Create Account",
-      haveAccount: "Already have an account? Login",
-      noAccount: "Don't have an account? Register"
+      password: "Heslo",
+      submitLogin: "Prihlásiť sa",
+      submitRegister: "Vytvoriť účet",
+      haveAccount: "Už máte účet? Prihláste sa",
+      noAccount: "Nemáte účet? Zaregistrujte sa"
     }
   }
 };

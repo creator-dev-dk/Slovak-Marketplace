@@ -55,6 +55,9 @@ export interface User {
   verificationLevel?: VerificationLevel;
   rating?: number;
   reviewsCount?: number;
+  role?: 'user' | 'admin';
+  isBanned?: boolean;
+  createdAt?: string;
 }
 
 export interface Review {
@@ -62,6 +65,8 @@ export interface Review {
   reviewerId: string;
   reviewerName: string;
   reviewerAvatar?: string;
+  revieweeId?: string; // Added for Admin view
+  listingId?: string; // Added for context
   rating: number;
   comment: string;
   createdAt: string;

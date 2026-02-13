@@ -20,6 +20,11 @@ interface AppState {
   isAuthLoading: boolean;
   error: string | null;
   
+  // Admin Data
+  adminUsers: User[];
+  adminReviews: Review[];
+  adminStats: { users: number; listings: number; reviews: number };
+  
   // Chat Data
   conversations: Conversation[];
   activeConversationId: string | null;
@@ -58,6 +63,11 @@ interface AppState {
   deleteListing: (id: string) => Promise<void>;
   toggleListingStatus: (id: string, isActive: boolean) => Promise<void>;
   incrementViewCount: (id: string) => Promise<void>;
+  
+  // Admin Actions
+  fetchAdminData: () => Promise<void>;
+  adminBanUser: (userId: string, isBanned: boolean) => Promise<void>;
+  adminDeleteReview: (reviewId: string) => Promise<void>;
   
   // User Profile Actions
   fetchUserProfile: (userId: string) => Promise<void>;
@@ -101,6 +111,11 @@ export const useAppStore = create<AppState>()(
       isAuthLoading: true,
       error: null,
       
+      // Admin
+      adminUsers: [],
+      adminReviews: [],
+      adminStats: { users: 0, listings: 0, reviews: 0 },
+
       // Chat State
       conversations: [],
       activeConversationId: null,
@@ -183,11 +198,9 @@ export const useAppStore = create<AppState>()(
       },
 
       fetchUserListings: async (userId) => {
-        // If userId is provided, fetch for that user. Else fetch for logged in user.
         const targetId = userId || get().user?.id;
         if (!targetId) return;
         set({ isLoading: true });
-
         try {
           const { data, error } = await supabase
             .from('listings')
@@ -295,10 +308,11 @@ export const useAppStore = create<AppState>()(
         set({ isLoading: true });
         try {
             await supabase.from('listings').delete().eq('id', id);
+            // Optimistic update
             const newListings = get().listings.filter(l => l.id !== id);
             const newUserListings = get().userListings.filter(l => l.id !== id);
-            set({ listings: newListings, userListings: newUserListings });
-        } catch (err: any) { console.error(err); } finally { set({ isLoading: false }); }
+            set({ listings: newListings, userListings: newUserListings, isLoading: false });
+        } catch (err: any) { console.error(err); set({ isLoading: false }); }
       },
 
       toggleListingStatus: async (id, isActive) => {
@@ -312,6 +326,69 @@ export const useAppStore = create<AppState>()(
 
       incrementViewCount: async (id) => {
          try { await supabase.rpc('increment_views', { row_id: id }); } catch (e) { /* ignore */ }
+      },
+
+      // --- ADMIN ACTIONS ---
+      fetchAdminData: async () => {
+          const { user } = get();
+          if (user?.role !== 'admin') return;
+          
+          set({ isLoading: true });
+          try {
+              // Fetch Users
+              const { data: users, count: userCount } = await supabase.from('users').select('*', { count: 'exact' }).order('created_at', { ascending: false });
+              
+              // Fetch Reviews (All)
+              const { data: reviews, count: reviewCount } = await supabase.from('reviews').select(`*, reviewer:users!reviewer_id(full_name, avatar_url)`).order('created_at', { ascending: false });
+              
+              // Listings count
+              const { count: listingCount } = await supabase.from('listings').select('id', { count: 'exact' });
+
+              set({
+                  adminUsers: (users || []).map((u: any) => ({
+                      id: u.id,
+                      name: u.full_name,
+                      email: u.email,
+                      role: u.role,
+                      isBanned: u.is_banned,
+                      verificationLevel: u.verification_level,
+                      createdAt: u.created_at,
+                      avatar: u.avatar_url
+                  })),
+                  adminReviews: (reviews || []).map((r: any) => ({
+                      id: r.id,
+                      reviewerId: r.reviewer_id,
+                      reviewerName: r.reviewer?.full_name || 'Deleted User',
+                      reviewerAvatar: r.reviewer?.avatar_url,
+                      revieweeId: r.reviewee_id,
+                      rating: r.rating,
+                      comment: r.comment,
+                      createdAt: r.created_at
+                  })),
+                  adminStats: {
+                      users: userCount || 0,
+                      listings: listingCount || 0,
+                      reviews: reviewCount || 0
+                  },
+                  isLoading: false
+              });
+              
+          } catch(e) { console.error(e); set({ isLoading: false }); }
+      },
+
+      adminBanUser: async (userId, isBanned) => {
+          try {
+              await supabase.from('users').update({ is_banned: isBanned }).eq('id', userId);
+              const updatedUsers = get().adminUsers.map(u => u.id === userId ? { ...u, isBanned } : u);
+              set({ adminUsers: updatedUsers });
+          } catch(e) { console.error(e); }
+      },
+
+      adminDeleteReview: async (reviewId) => {
+          try {
+              await supabase.from('reviews').delete().eq('id', reviewId);
+              set({ adminReviews: get().adminReviews.filter(r => r.id !== reviewId) });
+          } catch(e) { console.error(e); }
       },
 
       // --- USER PROFILE & REVIEWS ---
@@ -332,7 +409,9 @@ export const useAppStore = create<AppState>()(
                       avatar: data.avatar_url,
                       verificationLevel: data.verification_level,
                       rating: avg,
-                      reviewsCount: reviews?.length || 0
+                      reviewsCount: reviews?.length || 0,
+                      role: data.role,
+                      isBanned: data.is_banned
                   },
                   isLoading: false
               });
@@ -366,10 +445,7 @@ export const useAppStore = create<AppState>()(
       toggleFavorite: async (listingId) => {
           const { user, favorites } = get();
           const isFav = favorites.includes(listingId);
-          
-          // Optimistic update
           set({ favorites: isFav ? favorites.filter(id => id !== listingId) : [...favorites, listingId] });
-
           if (user) {
               if (isFav) {
                   await supabase.from('favorites').delete().match({ user_id: user.id, listing_id: listingId });
@@ -470,7 +546,6 @@ export const useAppStore = create<AppState>()(
       fetchUnreadCount: async () => {
           const { user } = get();
           if(!user) return;
-          // Simplified unread count
           const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).neq('sender_id', user.id).eq('is_read', false);
           set({ unreadMessagesCount: count || 0 });
       },
@@ -505,23 +580,46 @@ export const useAppStore = create<AppState>()(
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
-              const { data: profile } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+              // Try to fetch profile, but fallback to session metadata if it fails (e.g. schema error)
+              let profile = null;
+              try {
+                const { data, error } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+                if (!error) profile = data;
+              } catch (e) {
+                console.warn("Failed to fetch profile (schema mismatch possible):", e);
+              }
+
+              const meta = session.user.user_metadata || {};
+              // Robust Fallback using metadata if public.users is inaccessible
+              const name = profile?.full_name || meta.full_name || 'User';
+              const avatar = profile?.avatar_url || meta.avatar_url;
+              const role = profile?.role || 'user';
+              const verificationLevel = profile?.verification_level || 'NONE';
               
               // Calculate stats for logged in user
-              const { data: reviews } = await supabase.from('reviews').select('rating').eq('reviewee_id', session.user.id);
-              const avg = reviews?.length ? reviews.reduce((a: any, b: any) => a + b.rating, 0) / reviews.length : 0;
+              let rating = 0;
+              let reviewsCount = 0;
+              try {
+                  const { data: reviews } = await supabase.from('reviews').select('rating').eq('reviewee_id', session.user.id);
+                  if (reviews && reviews.length > 0) {
+                      reviewsCount = reviews.length;
+                      rating = reviews.reduce((a: any, b: any) => a + b.rating, 0) / reviews.length;
+                  }
+              } catch (e) { console.warn("Failed to fetch reviews:", e); }
 
               set({ 
                 isLoggedIn: true, 
                 user: { 
                   id: session.user.id, 
                   email: session.user.email,
-                  name: profile?.full_name || 'User', 
+                  name: name, 
                   type: 'buyer', 
-                  avatar: profile?.avatar_url,
-                  verificationLevel: profile?.verification_level as VerificationLevel,
-                  rating: avg,
-                  reviewsCount: reviews?.length || 0
+                  avatar: avatar,
+                  verificationLevel: verificationLevel as VerificationLevel,
+                  rating: rating,
+                  reviewsCount: reviewsCount,
+                  role: role,
+                  isBanned: profile?.is_banned || false
                 } 
               });
               get().fetchFavorites();
@@ -529,20 +627,40 @@ export const useAppStore = create<AppState>()(
             } else {
               set({ isLoggedIn: false, user: null });
             }
-        } catch { set({ isLoggedIn: false, user: null }); } finally { set({ isAuthLoading: false }); }
+        } catch (e) { 
+            console.error("Check session failed:", e);
+            set({ isLoggedIn: false, user: null }); 
+        } finally { 
+            set({ isAuthLoading: false }); 
+        }
       },
 
       login: async (email, password) => {
         const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-        if (!error && data.user) { await get().checkSession(); set({ isAuthModalOpen: false }); }
-        return { error };
+        
+        if (error) {
+            return { error };
+        }
+
+        if (data.user) {
+             // Login successful
+             await get().checkSession(); 
+             set({ isAuthModalOpen: false });
+        }
+        
+        return { error: null };
       },
 
       register: async (email, password, fullName) => {
         const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+        // NOTE: We do NOT insert into public.users here anymore. 
+        // The PostgreSQL trigger 'on_auth_user_created' handles that securely.
         if (!error && data.user) {
-            await supabase.from('users').insert({ id: data.user.id, email, full_name: fullName, avatar_url: fullName.charAt(0).toUpperCase() });
-            await get().checkSession(); set({ isAuthModalOpen: false });
+            // Wait a moment for trigger to fire before checking session
+            setTimeout(async () => {
+               await get().checkSession(); 
+               set({ isAuthModalOpen: false });
+            }, 500);
         }
         return { error };
       },

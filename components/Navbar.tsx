@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Search, Plus, User, Menu, X, Globe, ChevronDown, LogOut, Heart, MessageSquare, Bell } from 'lucide-react';
+import { Search, Plus, User, Menu, X, Globe, ChevronDown, LogOut, Heart, MessageSquare, Bell, Shield } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -70,6 +71,14 @@ const Navbar: React.FC = () => {
 
             {isLoggedIn && user ? (
               <div className="flex items-center gap-3 pl-2">
+                 
+                 {/* Admin Link */}
+                 {user.role === 'admin' && (
+                    <Link to="/admin" className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200 shadow-sm" title="Admin Dashboard">
+                        <Shield size={18} />
+                    </Link>
+                 )}
+
                  {/* Notification Icons */}
                  <div className="flex items-center gap-1 border-r border-slate-200 pr-3 mr-1">
                      <Link to="/profile" className="relative p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors group">
@@ -91,7 +100,11 @@ const Navbar: React.FC = () => {
                  {/* Profile Avatar */}
                  <Link to="/profile" className="flex items-center gap-2.5 cursor-pointer group">
                     <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs group-hover:border-indigo-300 transition-colors">
-                      {user.avatar}
+                      {user.avatar && user.avatar.length > 5 ? (
+                          <img src={user.avatar} className="w-full h-full object-cover rounded-full" />
+                      ) : (
+                          user.avatar
+                      )}
                     </div>
                  </Link>
               </div>
@@ -169,6 +182,11 @@ const Navbar: React.FC = () => {
                   {t.nav.messages}
                   {unreadMessagesCount > 0 && <span className="bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-full">{unreadMessagesCount}</span>}
                 </Link>
+                 {user?.role === 'admin' && (
+                    <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between px-3 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 rounded-lg">
+                        Admin Dashboard <Shield size={16} />
+                    </Link>
+                 )}
                 <button onClick={() => { logout(); setIsMenuOpen(false); }} className="block w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg">
                     {t.nav.logout}
                 </button>
